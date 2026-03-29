@@ -3270,8 +3270,11 @@ async function convertToMember(id, first, last) {
 
   obTab('enroll');
 
+  // Wait for tab to render before filling fields
+  await new Promise(r => setTimeout(r, 100));
+
   // Pre-fill all fields from prospective record
-  const set = (id, val) => { const el = document.getElementById(id); if (el && val) el.value = val; };
+  const set = (fieldId, val) => { const el = document.getElementById(fieldId); if (el && val) el.value = val; };
   set('ob-first', m.first_name);
   set('ob-last', m.last_name);
   set('ob-email', m.email);
@@ -3294,7 +3297,16 @@ async function convertToMember(id, first, last) {
   set('ob-join', today);
   set('ob-waiver-date', today);
 
-  // Alert to complete remaining required fields
+  // Set enrollment type to Regular Member (no welcome email)
+  const typeEl = document.getElementById('ob-type');
+  if (typeEl) typeEl.value = 'active';
+
+  // Uncheck all welcome email elements since this is a conversion
+  ['we-intro','we-app','we-hg','we-chair','we-reg','we-sched-roch','we-sched-stpaul','we-checkups','we-nextcheckup'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.checked = false;
+  });
+
   alert(`${first} ${last}'s details have been pre-filled. Please review, complete any missing fields (waiver signature, fee tier, group), then click Enroll.`);
 }
 
