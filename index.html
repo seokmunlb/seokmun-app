@@ -398,6 +398,9 @@ textarea{resize:vertical;min-height:68px}
           <div class="fg"><label>How did they hear about us?</label><input id="pro-how-heard"></div>
           <div class="fg"><label>Notes</label><textarea id="pro-notes" rows="2"></textarea></div>
           <button class="btn btn-p" style="width:100%;margin-top:8px" onclick="addProspective()">✦ Add Prospective &amp; Send Intro Invite</button>
+        <div id="pro-convert-btn" style="display:none;margin-top:8px">
+          <button class="btn btn-sm btn-p" style="width:100%" onclick="convertToMemberFromProspective()">→ Skip invite — Enroll as Member now</button>
+        </div>
         </div>
       </div>
       <div class="card">
@@ -2862,6 +2865,7 @@ async function editMemberModal(id) {
           <option value="inactive" ${m.status==='inactive'?'selected':''}>Inactive</option>
         </select>
       </div>
+      <label class="cr"><input type="checkbox" id="edit-chair_modification" ${m.chair_modification?'checked':''}><span>Chair modification needed</span></label>
       <label class="cr"><input type="checkbox" id="edit-master_managed" ${m.master_managed?'checked':''}><span>Master-managed</span></label>
     </div>
     <div style="display:flex;gap:8px;margin-top:16px">
@@ -2883,6 +2887,7 @@ async function saveMemberEdit(id) {
   update.status = document.getElementById('edit-status').value;
   update.master_managed = document.getElementById('edit-master_managed')?.checked || false;
   update.join_date = document.getElementById('edit-join_date')?.value || null;
+  update.chair_modification = document.getElementById('edit-chair_modification')?.checked || false;
   await SB.from('members').update(update).eq('id', id);
   openMemberModal(id);
   loadMembers();
@@ -2987,6 +2992,13 @@ async function addProspective() {
 
   if (error) { alert('Error: ' + error.message); btn.disabled=false; btn.textContent='✦ Add Prospective & Send Intro Invite'; return; }
 
+  // Set conversion ID immediately so Convert button works even before email is generated
+  convertingProspectiveId = member.id;
+
+  // Show the direct convert button
+  const convertBtn = document.getElementById('pro-convert-btn');
+  if (convertBtn) convertBtn.style.display = 'block';
+
   // Generate intro invite email
   const sig = currentStaff ? `${currentStaff.first_name} ${currentStaff.last_name}` : 'Seokmun Domun US';
 
@@ -3034,7 +3046,7 @@ SEOKMUN™ and SEOKMUN HOHEUP™ are trademarks of Hanjo.`;
         </div>
         <div style="display:flex;gap:8px;margin-top:10px">
           <button class="btn btn-sm" onclick="copyEl('pro-email-body')">Copy email body</button>
-          <button class="btn btn-sm btn-s" onclick="obTab('prospective');document.getElementById('pro-preview').innerHTML=''">Add another</button>
+          <button class="btn btn-sm btn-s" onclick="obTab('prospective');document.getElementById('pro-preview').innerHTML='';document.getElementById('pro-convert-btn').style.display='none';convertingProspectiveId=null;">Add another</button>
           <button class="btn btn-sm btn-p" onclick="convertToMember('${member.id}','${escAttr(first)}','${escAttr(last)}')">Enroll as Member</button>
         </div>
       </div>
@@ -3277,6 +3289,13 @@ async function markAttendedIntro(id, singleDay) {
 async function markSingleDayForm(id) {
   await SB.from('members').update({ single_day_form_completed: true }).eq('id', id);
   loadProspectiveList();
+}
+
+async function convertToMemberFromProspective() {
+  if (!convertingProspectiveId) { alert('No prospective member to convert. Please add a prospective member first.'); return; }
+  const { data: m } = await SB.from('members').select('*').eq('id', convertingProspectiveId).single();
+  if (!m) return;
+  convertToMember(convertingProspectiveId, m.first_name, m.last_name);
 }
 
 async function convertToMember(id, first, last) {
