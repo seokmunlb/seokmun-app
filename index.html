@@ -3029,7 +3029,7 @@ SEOKMUN™ and SEOKMUN HOHEUP™ are trademarks of Hanjo.`;
         <div style="display:flex;gap:8px;margin-top:10px">
           <button class="btn btn-sm" onclick="copyEl('pro-email-body')">Copy email body</button>
           <button class="btn btn-sm btn-s" onclick="obTab('prospective');document.getElementById('pro-preview').innerHTML=''">Add another</button>
-          <button class="btn btn-sm" onclick="obTab('enroll')">Convert to member now</button>
+          <button class="btn btn-sm btn-p" onclick="convertToMember('${member.id}','${escAttr(first)}','${escAttr(last)}')">Enroll as Member</button>
         </div>
       </div>
     </div>`;
