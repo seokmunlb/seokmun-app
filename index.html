@@ -2217,6 +2217,7 @@ let SB = null;         // Supabase client
 let currentStaff = null;
 let currentSessionId = null;
 let sessionAddedMembers = []; // members added to current checkup session
+let convertingProspectiveId = null; // ID of prospective being converted
 let currentEmailContext = null; // {comm_type, member_id, subject, body, ...}
 let editingLevelNum = null;
 let locations = [];
@@ -3074,7 +3075,7 @@ async function enrollMember() {
   const dobVal = document.getElementById('ob-dob').value;
   const dobDeclined = document.getElementById('ob-dob-declined').checked;
 
-  const { data: member, error } = await SB.from('members').insert({
+  const memberData = {
     first_name: first, last_name: last, email,
     preferred_name: document.getElementById('ob-pref').value.trim() || null,
     date_of_birth: (!dobDeclined && dobVal) ? dobVal : null,
@@ -3122,8 +3123,20 @@ async function enrollMember() {
     flag_one_on_one: document.getElementById('ob-oo1').checked,
     master_managed: document.getElementById('ob-master-managed')?.checked || false,
     notes: document.getElementById('ob-notes').value.trim() || null,
-    created_by: currentStaff?.id
-  }).select().single();
+  };
+
+  let member, error;
+  if (convertingProspectiveId) {
+    // Update existing prospective record
+    const res = await SB.from('members').update(memberData).eq('id', convertingProspectiveId).select().single();
+    member = res.data; error = res.error;
+    convertingProspectiveId = null;
+  } else {
+    // Insert new member
+    memberData.created_by = currentStaff?.id;
+    const res = await SB.from('members').insert(memberData).select().single();
+    member = res.data; error = res.error;
+  }
 
   if (error) { alert('Error enrolling member: ' + error.message); btn.disabled=false; btn.innerHTML='✦ Enroll Member &amp; Generate Welcome Emails'; return; }
 
@@ -3267,6 +3280,9 @@ async function convertToMember(id, first, last) {
   // Load full prospective record
   const { data: m } = await SB.from('members').select('*').eq('id', id).single();
   if (!m) return;
+
+  // Track that we're converting an existing prospective record
+  convertingProspectiveId = id;
 
   obTab('enroll');
 
