@@ -2825,6 +2825,9 @@ async function editMemberModal(id) {
     ['Staff Notes', 'notes', m.notes||''],
   ];
 
+  const locOptions = locations.map(l =>
+    `<option value="${l.id}" ${m.location_id===l.id?'selected':''}>${l.name}</option>`).join('');
+
   const mm = document.getElementById('mm-body');
   mm.innerHTML = `
     <div class="alert a-i" style="margin-bottom:16px">Editing <strong>${m.first_name} ${m.last_name}</strong></div>
@@ -2835,11 +2838,26 @@ async function editMemberModal(id) {
           <input id="edit-${key}" value="${escHtml(val)}">
         </div>`).join('')}
       <div class="fg">
+        <label>Location</label>
+        <select id="edit-location_id">${locOptions}</select>
+      </div>
+      <div class="fg">
         <label>Current Level</label>
         <select id="edit-current_level">
           ${Array.from({length:14},(_,i)=>`<option value="${i+1}" ${m.current_level===i+1?'selected':''}>${i+1}</option>`).join('')}
         </select>
       </div>
+      <div class="fg">
+        <label>Status</label>
+        <select id="edit-status">
+          <option value="active" ${m.status==='active'?'selected':''}>Active</option>
+          <option value="trial" ${m.status==='trial'?'selected':''}>Trial</option>
+          <option value="prospective" ${m.status==='prospective'?'selected':''}>Prospective</option>
+          <option value="hold" ${m.status==='hold'?'selected':''}>On Hold</option>
+          <option value="inactive" ${m.status==='inactive'?'selected':''}>Inactive</option>
+        </select>
+      </div>
+      <label class="cr"><input type="checkbox" id="edit-master_managed" ${m.master_managed?'checked':''}><span>Master-managed</span></label>
     </div>
     <div style="display:flex;gap:8px;margin-top:16px">
       <button class="btn btn-p" onclick="saveMemberEdit('${id}')">Save Changes</button>
@@ -2856,6 +2874,9 @@ async function saveMemberEdit(id) {
     update[k] = val || null;
   });
   update.current_level = parseInt(document.getElementById('edit-current_level').value);
+  update.location_id = document.getElementById('edit-location_id').value || null;
+  update.status = document.getElementById('edit-status').value;
+  update.master_managed = document.getElementById('edit-master_managed')?.checked || false;
   await SB.from('members').update(update).eq('id', id);
   openMemberModal(id);
   loadMembers();
