@@ -377,6 +377,7 @@ textarea{resize:vertical;min-height:68px}
     <button class="tab" onclick="obTab('prolist')">Prospective List</button>
     <button class="tab" onclick="obTab('enroll')">Enroll New Member</button>
     <button class="tab" onclick="obTab('tracker')">Checklist Tracker</button>
+    <button class="tab" onclick="obTab('bulk')">Bulk Import</button>
   </div>
 
   <!-- ENROLL TAB -->
@@ -674,6 +675,23 @@ I have read and understood this waiver and agree freely and voluntarily.</div>
   </div>
 
   <!-- TRACKER TAB -->
+  <div id="ob-bulk" style="display:none">
+    <div class="card">
+      <div class="ch"><span class="ct">Bulk Import Members from Excel</span></div>
+      <div class="cb">
+        <div class="alert a-i" style="margin-bottom:16px;font-size:13px">
+          Upload your Excel file. Required columns: <strong>First, Last, Email</strong>. Optional: Include, Notes, Phone 1, Join Date, Title Before, Nickname, Seokmun Title, Level, Location, WhereLive, Chair, MasterHandles, Do Not email checkups, Status, Group, Gender.<br><br>
+          Rows where <strong>Include</strong> is blank or "N" will be skipped. Status blank = Active.
+        </div>
+        <div class="fg">
+          <label>Select Excel file (.xlsx)</label>
+          <input type="file" id="bulk-file" accept=".xlsx,.xls" onchange="previewBulkImport(this)">
+        </div>
+        <div id="bulk-preview" style="margin-top:16px"></div>
+      </div>
+    </div>
+  </div>
+
   <div id="ob-tracker" style="display:none">
     <div class="sr">
       <input id="ob-tq" placeholder="Search member…" oninput="loadObTracker()">
@@ -2476,8 +2494,9 @@ function obTab(t) {
   document.getElementById('ob-prolist').style.display     = t === 'prolist'     ? 'block' : 'none';
   document.getElementById('ob-enroll').style.display      = t === 'enroll'      ? 'block' : 'none';
   document.getElementById('ob-tracker').style.display     = t === 'tracker'     ? 'block' : 'none';
+  document.getElementById('ob-bulk').style.display        = t === 'bulk'        ? 'block' : 'none';
   document.querySelectorAll('#page-onboard .tabs .tab').forEach((b,i) => {
-    b.classList.toggle('active', ['prospective','prolist','enroll','tracker'][i] === t);
+    b.classList.toggle('active', ['prospective','prolist','enroll','tracker','bulk'][i] === t);
   });
   if (t === 'tracker') loadObTracker();
   if (t === 'prolist') loadProspectiveList();
@@ -2820,6 +2839,7 @@ async function editMemberModal(id) {
     ['First Name', 'first_name', m.first_name],
     ['Last Name', 'last_name', m.last_name],
     ['Email', 'email', m.email],
+    ['Mail Merge Email', 'mail_merge_email', m.mail_merge_email||''],
     ['Phone', 'phone', m.phone||''],
     ['Preferred Name', 'preferred_name', m.preferred_name||''],
     ['Address Line 1', 'address1', m.address1||''],
@@ -2878,7 +2898,7 @@ async function editMemberModal(id) {
 }
 
 async function saveMemberEdit(id) {
-  const fields = ['first_name','last_name','email','phone','preferred_name',
+  const fields = ['first_name','last_name','email','mail_merge_email','phone','preferred_name',
     'address1','city','state','zip','health_notes','modifications_noted','notes'];
   const update = {};
   fields.forEach(k => {
@@ -5510,6 +5530,265 @@ function copyEl(id) {
     const orig = el.closest('.card')?.querySelector('.btn-sm');
     if (orig) { const t = orig.textContent; orig.textContent='Copied!'; setTimeout(()=>orig.textContent=t,1500); }
   });
+}
+
+// ══════════════════════════════════════════════════════════
+//  BULK IMPORT
+// ══════════════════════════════════════════════════════════
+async function previewBulkImport(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const preview = document.getElementById('bulk-preview');
+  preview.innerHTML = '<div class="alert a-i">Reading file…</div>';
+
+  if (!window.XLSX) {
+    await new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+      s.onload = resolve; s.onerror = reject;
+      document.head.appendChild(s);
+    });
+  }
+
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const wb = XLSX.read(e.target.result, { type: 'array', cellDates: true });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws, { defval: '' });
+      const parsed = parseBulkRows(rows);
+      showBulkPreview(parsed);
+    } catch(err) {
+      preview.innerHTML = `<div class="alert a-w">Error reading file: ${err.message}</div>`;
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function parseBulkRows(rows) {
+  const results = [];
+  for (const row of rows) {
+    // Skip if Include is blank or N
+    const inc = String(row['Include']||'').trim().toLowerCase();
+    if (inc === 'n' || inc === 'no') continue;
+
+    const first = String(row['First']||'').trim();
+    const last  = String(row['Last']||'').trim();
+    const email = String(row['Email']||'').trim();
+    if (!first && !last && !email) continue; // blank row
+
+    // Status mapping
+    const rawStatus = String(row['Status']||'').trim().toUpperCase();
+    let status = 'active';
+    if (rawStatus === 'TRIAL') status = 'trial';
+    else if (rawStatus === 'PROSPECTIVE') status = 'prospective';
+    else if (rawStatus === 'ON HOLD' || rawStatus === 'HOLD') status = 'hold';
+    else if (rawStatus === 'INACTIVE') status = 'inactive';
+
+    // Enrollment type
+    const enrollType = status === 'trial' ? 'three_month' : 'active';
+
+    // Gender
+    const rawGender = String(row['Gender']||'').trim().toLowerCase();
+    let gender = null;
+    if (rawGender === 'f' || rawGender === 'female') gender = 'female';
+    else if (rawGender === 'm' || rawGender === 'male') gender = 'male';
+
+    // Location matching
+    const rawLoc = String(row['Location']||'').trim().toLowerCase();
+    let locationId = null;
+    if (rawLoc.includes('paul') || rawLoc.includes('st paul') || rawLoc.includes('stpaul')) {
+      locationId = locations.find(l => l.name?.toLowerCase().includes('paul'))?.id || null;
+    } else if (rawLoc.includes('rochester') || rawLoc.includes('roch')) {
+      locationId = locations.find(l => l.name?.toLowerCase().includes('rochester'))?.id || null;
+    } else if (rawLoc) {
+      locationId = locations.find(l => l.name?.toLowerCase().includes(rawLoc))?.id || null;
+    }
+
+    // Level
+    const level = parseInt(row['Level']) || 1;
+
+    // Group
+    const rawGroup = String(row['Group']||'').trim();
+    const group = rawGroup === '2' ? 'group2' : 'group1';
+
+    // Join date
+    let joinDate = null;
+    const jd = row['Join Date'];
+    if (jd instanceof Date) joinDate = jd.toISOString().split('T')[0];
+    else if (typeof jd === 'string' && jd.trim()) joinDate = jd.trim();
+    else if (typeof jd === 'number') {
+      // Excel serial date
+      const d = new Date(Math.round((jd - 25569) * 86400 * 1000));
+      joinDate = d.toISOString().split('T')[0];
+    }
+    if (!joinDate) joinDate = new Date().toISOString().split('T')[0];
+
+    // Flags
+    const chair   = /x/i.test(String(row['Chair']||''));
+    const master  = /x/i.test(String(row['MasterHandles']||''));
+    const noEmail = /x/i.test(String(row['Do Not email checkups']||''));
+
+    // WhereLive — store in notes if present
+    const whereLive = String(row['WhereLive']||'').trim();
+
+    // Title & honorific
+    const titleBefore   = String(row['Title Before']||'').trim();
+    const seokmunTitle  = String(row['Seokmun Title']||'').trim();
+    const nickname      = String(row['Nickname']||'').trim();
+    const phone         = String(row['Phone 1']||'').trim();
+    const mailMergeEmail = String(row['MailMergeEmail']||row['MergeMailEmail']||'').trim();
+    const notes         = [
+      String(row['Notes']||'').trim(),
+      whereLive ? `Lives in: ${whereLive}` : '',
+      seokmunTitle ? `Seokmun title: ${seokmunTitle}` : ''
+    ].filter(Boolean).join(' | ') || null;
+
+    results.push({
+      first_name: first,
+      last_name: last,
+      email: email || null,
+      title_before: titleBefore || null,
+      preferred_name: nickname || null,
+      phone: phone || null,
+      mail_merge_email: mailMergeEmail || null,
+      gender,
+      location_id: locationId,
+      current_level: level,
+      orientation_group: group,
+      status,
+      join_date: joinDate,
+      chair_modification: chair,
+      master_managed: master,
+      email_pref: noEmail ? 'no_checkup_results' : 'all',
+      notes,
+      where_live: whereLive || null,
+      seokmun_title: seokmunTitle || null,
+      _enrollType: enrollType,
+      _raw: `${first} ${last} — ${email || 'no email'} — Lvl ${level} — ${status}`,
+      _error: !first || !last ? 'Missing name' : null
+    });
+  }
+  return results;
+}
+
+function showBulkPreview(rows) {
+  const preview = document.getElementById('bulk-preview');
+  const valid   = rows.filter(r => !r._error);
+  const invalid = rows.filter(r => r._error);
+
+  let html = `
+    <div class="alert a-s" style="margin-bottom:12px">
+      <strong>${valid.length}</strong> members ready to import.
+      ${invalid.length ? `<strong style="color:var(--rust)">${invalid.length}</strong> rows have errors (shown below).` : ''}
+    </div>`;
+
+  if (invalid.length) {
+    html += `<div class="alert a-w" style="margin-bottom:12px;font-size:13px">
+      <strong>Rows with errors:</strong><br>
+      ${invalid.map(r => `${r._raw} — <em>${r._error}</em>`).join('<br>')}
+    </div>`;
+  }
+
+  html += `<div style="overflow-x:auto;margin-bottom:16px">
+    <table class="btbl" style="font-size:12px">
+      <thead><tr>
+        <th>Name</th><th>Email</th><th>Level</th><th>Location</th>
+        <th>Status</th><th>Group</th><th>Join Date</th><th>Flags</th>
+      </tr></thead>
+      <tbody>
+        ${valid.map(r => `<tr>
+          <td>${r.first_name} ${r.last_name}${r.title_before?` <span style="color:var(--ink3)">(${r.title_before})</span>`:''}</td>
+          <td style="font-size:11px">${r.email||'—'}</td>
+          <td>Lvl ${r.current_level}</td>
+          <td style="font-size:11px">${locations.find(l=>l.id===r.location_id)?.name||'<span style="color:var(--rust)">Not matched</span>'}</td>
+          <td>${r.status}</td>
+          <td>${r.orientation_group}</td>
+          <td style="font-size:11px">${r.join_date}</td>
+          <td style="font-size:11px">
+            ${r.chair_modification?'🪑 Chair ':''}
+            ${r.master_managed?'Master ':''}
+            ${r.email_pref!=='all'?'No checkup email':''}
+          </td>
+        </tr>`).join('')}
+      </tbody>
+    </table>
+  </div>
+  <div style="display:flex;gap:10px">
+    <button class="btn btn-p" onclick="runBulkImport()">✦ Import ${valid.length} Members</button>
+    <button class="btn btn-sm" onclick="document.getElementById('bulk-file').value='';document.getElementById('bulk-preview').innerHTML=''">Clear</button>
+  </div>`;
+
+  preview.innerHTML = html;
+  preview._data = valid;
+}
+
+async function runBulkImport() {
+  const preview = document.getElementById('bulk-preview');
+  const rows = preview._data;
+  if (!rows?.length) return;
+
+  const btn = preview.querySelector('.btn-p');
+  btn.disabled = true; btn.textContent = 'Importing…';
+
+  let success = 0, skipped = 0, errors = [];
+
+  for (const r of rows) {
+    const memberData = {
+      first_name: r.first_name,
+      last_name: r.last_name,
+      email: r.email,
+      title_before: r.title_before,
+      preferred_name: r.preferred_name,
+      phone: r.phone,
+      mail_merge_email: r.mail_merge_email,
+      gender: r.gender,
+      location_id: r.location_id,
+      current_level: r.current_level,
+      orientation_group: r.orientation_group,
+      status: r.status,
+      join_date: r.join_date,
+      trial_start_date: r._enrollType === 'three_month' ? r.join_date : null,
+      trial_end_date: r._enrollType === 'three_month' ? (() => {
+        const d = new Date(r.join_date); d.setMonth(d.getMonth()+3);
+        return d.toISOString().split('T')[0];
+      })() : null,
+      converted_to_active_date: r.status === 'active' ? r.join_date : null,
+      chair_modification: r.chair_modification,
+      master_managed: r.master_managed,
+      email_pref: r.email_pref,
+      notes: r.notes,
+      waiver_agreed: true,
+      waiver_signed: true,
+      waiver_signed_date: r.join_date,
+      fee_tier: null,
+      billing_frequency: null,
+      created_by: currentStaff?.id
+    };
+
+    const { data: member, error } = await SB.from('members').insert(memberData).select('id').single();
+    if (error) {
+      if (error.code === '23505') {
+        skipped++;
+      } else {
+        errors.push(`${r.first_name} ${r.last_name}: ${error.message}`);
+      }
+      continue;
+    }
+
+    // Create onboarding record
+    await SB.from('onboarding').insert({ member_id: member.id });
+    success++;
+  }
+
+  let msg = `<div class="alert a-s"><strong>✓ Import complete.</strong> ${success} members added.`;
+  if (skipped) msg += ` ${skipped} skipped (email already exists).`;
+  if (errors.length) msg += `<br><strong>Errors:</strong><br>${errors.join('<br>')}`;
+  msg += '</div>';
+
+  preview.innerHTML = msg;
+  loadMembers();
+  updateBadges();
 }
 
 function copyText(text) {
