@@ -613,7 +613,8 @@ textarea{resize:vertical;min-height:68px}
           <label class="cr"><input type="checkbox" id="ob-noemail"><span>Do not send checkup results by email</span></label>
           <label class="cr"><input type="checkbox" id="ob-enc"><span>Use encouragement tone in emails</span></label>
           <label class="cr"><input type="checkbox" id="ob-oo1"><span>Flag for one-on-one scheduling</span></label>
-          <label class="cr"><input type="checkbox" id="ob-master-managed"><span>Master-managed — Master handles this member directly (checkup results sent, all else via Master)</span></label>
+          <label class="cr"><input type="checkbox" id="ob-master-managed"><span>Master-managed — Master handles this member directly</span></label>
+          <label class="cr"><input type="checkbox" id="ob-phone-call"><span>Phone call during class — member prefers to receive a call during practice sessions</span></label>
           <div class="fg" style="margin-top:8px"><label>Staff Notes</label><textarea id="ob-notes" rows="2"></textarea></div>
 
           <div class="sdiv">Liability Waiver</div>
@@ -2715,6 +2716,7 @@ async function openMemberModal(id) {
       ${m.encourage_emails?'<span class="fp fp-enc">Encouragement emails</span>':''}
       ${m.flag_one_on_one?'<span class="fp fp-oo1">1:1 flagged</span>':''}
       ${m.master_managed?'<span class="fp" style="background:#f0e8ff;color:#4a1a7a">Master-managed</span>':''}
+      ${m.phone_call_during_class?'<span class="fp" style="background:#e8f8f0;color:#1a5a3a">Phone call during class</span>':''}
       ${m.chair_modification?'<span class="fp">Chair modification</span>':''}
       ${m.doctor_clearance_on_file?'<span class="fp">Doctor clearance on file</span>':''}
       ${m.fee_overdue_flag&&!orgConfig.fees_globally_free?'<span class="fp fp-due">Fee overdue</span>':''}
@@ -2866,6 +2868,7 @@ async function editMemberModal(id) {
         </select>
       </div>
       <label class="cr"><input type="checkbox" id="edit-chair_modification" ${m.chair_modification?'checked':''}><span>Chair modification needed</span></label>
+      <label class="cr"><input type="checkbox" id="edit-phone_call_during_class" ${m.phone_call_during_class?'checked':''}><span>Phone call during class</span></label>
       <label class="cr"><input type="checkbox" id="edit-master_managed" ${m.master_managed?'checked':''}><span>Master-managed</span></label>
     </div>
     <div style="display:flex;gap:8px;margin-top:16px">
@@ -2888,6 +2891,7 @@ async function saveMemberEdit(id) {
   update.master_managed = document.getElementById('edit-master_managed')?.checked || false;
   update.join_date = document.getElementById('edit-join_date')?.value || null;
   update.chair_modification = document.getElementById('edit-chair_modification')?.checked || false;
+  update.phone_call_during_class = document.getElementById('edit-phone_call_during_class')?.checked || false;
   await SB.from('members').update(update).eq('id', id);
   openMemberModal(id);
   loadMembers();
@@ -3139,6 +3143,7 @@ async function enrollMember() {
     encourage_emails: document.getElementById('ob-enc').checked,
     flag_one_on_one: document.getElementById('ob-oo1').checked,
     master_managed: document.getElementById('ob-master-managed')?.checked || false,
+    phone_call_during_class: document.getElementById('ob-phone-call')?.checked || false,
     notes: document.getElementById('ob-notes').value.trim() || null,
   };
 
@@ -3228,13 +3233,44 @@ async function enrollMember() {
 
     btn.disabled = false; btn.innerHTML = '✦ Enroll Member';
     await updateBadges();
-    alert(`✓ ${first} ${last} enrolled! Welcome emails are shown below — copy and send them.`);
+    showEnrollSuccess(`✓ ${first} ${last} enrolled! Welcome emails are shown below — copy and send them.`);
   } else {
     // Regular member or single day — no emails
     btn.disabled = false; btn.innerHTML = '✦ Enroll Member';
     await updateBadges();
-    alert(`✓ ${first} ${last} enrolled successfully.`);
+    showEnrollSuccess(`✓ ${first} ${last} enrolled successfully.`);
   }
+}
+
+function showEnrollSuccess(msg) {
+  const existing = document.getElementById('enroll-success-msg');
+  if (existing) existing.remove();
+  const div = document.createElement('div');
+  div.id = 'enroll-success-msg';
+  div.className = 'alert a-s';
+  div.style.cssText = 'margin-top:16px;display:flex;justify-content:space-between;align-items:center;gap:12px';
+  div.innerHTML = `<span>${msg}</span><button class="btn btn-sm" onclick="resetEnrollForm()">+ Add Another Member</button>`;
+  document.querySelector('#ob-enroll')?.appendChild(div);
+}
+
+function resetEnrollForm() {
+  document.getElementById('enroll-success-msg')?.remove();
+  document.getElementById('ob-preview1').style.display = 'none';
+  document.getElementById('ob-preview2').style.display = 'none';
+  ['ob-first','ob-last','ob-email','ob-pref','ob-phone','ob-phone2',
+   'ob-addr1','ob-addr2','ob-city','ob-state','ob-zip','ob-how-heard',
+   'ob-prev-practice','ob-medical','ob-health','ob-notes','ob-waiver-sig'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.value = '';
+  });
+  ['ob-chair','ob-doc','ob-oo1','ob-master-managed','ob-noemail','ob-enc',
+   'ob-dob-declined','we-intro','we-app','we-hg','we-reg','we-sched-roch',
+   'we-sched-stpaul','we-checkups','we-nextcheckup'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.checked = id.startsWith('we-') ? true : false;
+  });
+  document.getElementById('ob-level').value = '1';
+  document.getElementById('ob-join').value = new Date().toISOString().split('T')[0];
+  convertingProspectiveId = null;
+  window.scrollTo(0,0);
 }
 
 // ══════════════════════════════════════════════════════════
