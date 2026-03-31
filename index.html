@@ -5568,9 +5568,9 @@ async function previewBulkImport(input) {
 function parseBulkRows(rows) {
   const results = [];
   for (const row of rows) {
-    // Skip if Include is blank or N
+    // Only include rows where Include column has an x (case insensitive)
     const inc = String(row['Include']||'').trim().toLowerCase();
-    if (inc === 'n' || inc === 'no') continue;
+    if (!inc || inc === 'n' || inc === 'no') continue;
 
     const first = String(row['First']||'').trim();
     const last  = String(row['Last']||'').trim();
