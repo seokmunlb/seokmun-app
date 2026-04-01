@@ -2835,22 +2835,6 @@ async function editMemberModal(id) {
   const { data: m } = await SB.from('members').select('*').eq('id', id).single();
   if (!m) return;
 
-  const fields = [
-    ['First Name', 'first_name', m.first_name],
-    ['Last Name', 'last_name', m.last_name],
-    ['Email', 'email', m.email],
-    ['Mail Merge Email', 'mail_merge_email', m.mail_merge_email||''],
-    ['Phone', 'phone', m.phone||''],
-    ['Preferred Name', 'preferred_name', m.preferred_name||''],
-    ['Address Line 1', 'address1', m.address1||''],
-    ['City', 'city', m.city||''],
-    ['State', 'state', m.state||''],
-    ['Zip', 'zip', m.zip||''],
-    ['Health Notes', 'health_notes', m.health_notes||''],
-    ['Modifications', 'modifications_noted', m.modifications_noted||''],
-    ['Staff Notes', 'notes', m.notes||''],
-  ];
-
   const locOptions = locations.map(l =>
     `<option value="${l.id}" ${m.location_id===l.id?'selected':''}>${l.name}</option>`).join('');
 
@@ -2858,27 +2842,68 @@ async function editMemberModal(id) {
   mm.innerHTML = `
     <div class="alert a-i" style="margin-bottom:16px">Editing <strong>${m.first_name} ${m.last_name}</strong></div>
     <div style="display:flex;flex-direction:column;gap:10px">
-      ${fields.map(([label, key, val]) => `
-        <div class="fg">
-          <label>${label}</label>
-          <input id="edit-${key}" value="${escHtml(val)}">
-        </div>`).join('')}
-      <div class="fg">
-        <label>Join Date</label>
-        <input type="date" id="edit-join_date" value="${m.join_date||''}">
+
+      <div style="font-size:11px;font-weight:500;color:var(--ink3);text-transform:uppercase;letter-spacing:.05em;margin-top:4px">Identity</div>
+      <div class="fr2">
+        <div class="fg"><label>First Name</label><input id="edit-first_name" value="${escHtml(m.first_name||'')}"></div>
+        <div class="fg"><label>Last Name</label><input id="edit-last_name" value="${escHtml(m.last_name||'')}"></div>
       </div>
-      <div class="fg">
-        <label>Location</label>
-        <select id="edit-location_id">${locOptions}</select>
+      <div class="fr2">
+        <div class="fg"><label>Title Before (Dr, Rev…)</label><input id="edit-title_before" value="${escHtml(m.title_before||'')}"></div>
+        <div class="fg"><label>Preferred Name / Nickname</label><input id="edit-preferred_name" value="${escHtml(m.preferred_name||'')}"></div>
       </div>
-      <div class="fg">
-        <label>Current Level</label>
-        <select id="edit-current_level">
-          ${Array.from({length:14},(_,i)=>`<option value="${i+1}" ${m.current_level===i+1?'selected':''}>${i+1}</option>`).join('')}
-        </select>
+      <div class="fr2">
+        <div class="fg"><label>Gender</label>
+          <select id="edit-gender">
+            <option value="" ${!m.gender?'selected':''}>— not specified —</option>
+            <option value="female" ${m.gender==='female'?'selected':''}>Female</option>
+            <option value="male" ${m.gender==='male'?'selected':''}>Male</option>
+            <option value="nonbinary" ${m.gender==='nonbinary'?'selected':''}>Non-binary</option>
+            <option value="other" ${m.gender==='other'?'selected':''}>Other</option>
+          </select>
+        </div>
+        <div class="fg"><label>Pronoun</label><input id="edit-pronoun" value="${escHtml(m.pronoun||'')}"></div>
       </div>
-      <div class="fg">
-        <label>Status</label>
+
+      <div style="font-size:11px;font-weight:500;color:var(--ink3);text-transform:uppercase;letter-spacing:.05em;margin-top:4px">Contact</div>
+      <div class="fr2">
+        <div class="fg"><label>Email</label><input id="edit-email" value="${escHtml(m.email||'')}"></div>
+        <div class="fg"><label>Mail Merge Email</label><input id="edit-mail_merge_email" value="${escHtml(m.mail_merge_email||'')}"></div>
+      </div>
+      <div class="fr2">
+        <div class="fg"><label>Phone</label><input id="edit-phone" value="${escHtml(m.phone||'')}"></div>
+        <div class="fg"><label>Phone 2</label><input id="edit-phone2" value="${escHtml(m.phone2||'')}"></div>
+      </div>
+      <div class="fg"><label>Address Line 1</label><input id="edit-address1" value="${escHtml(m.address1||'')}"></div>
+      <div class="fg"><label>Address Line 2</label><input id="edit-address2" value="${escHtml(m.address2||'')}"></div>
+      <div class="fr2">
+        <div class="fg"><label>City</label><input id="edit-city" value="${escHtml(m.city||'')}"></div>
+        <div class="fg"><label>State</label><input id="edit-state" value="${escHtml(m.state||'')}"></div>
+      </div>
+      <div class="fr2">
+        <div class="fg"><label>Zip</label><input id="edit-zip" value="${escHtml(m.zip||'')}"></div>
+        <div class="fg"><label>Country</label><input id="edit-country" value="${escHtml(m.country||'US')}"></div>
+      </div>
+
+      <div style="font-size:11px;font-weight:500;color:var(--ink3);text-transform:uppercase;letter-spacing:.05em;margin-top:4px">Practice</div>
+      <div class="fr2">
+        <div class="fg"><label>Join Date</label><input type="date" id="edit-join_date" value="${m.join_date||''}"></div>
+        <div class="fg"><label>Location</label><select id="edit-location_id">${locOptions}</select></div>
+      </div>
+      <div class="fr2">
+        <div class="fg"><label>Current Level</label>
+          <select id="edit-current_level">
+            ${Array.from({length:15},(_,i)=>`<option value="${i+1}" ${m.current_level===i+1?'selected':''}>${i+1}</option>`).join('')}
+          </select>
+        </div>
+        <div class="fg"><label>Group</label>
+          <select id="edit-orientation_group">
+            <option value="group1" ${m.orientation_group==='group1'?'selected':''}>Group 1</option>
+            <option value="group2" ${m.orientation_group==='group2'?'selected':''}>Group 2</option>
+          </select>
+        </div>
+      </div>
+      <div class="fg"><label>Status</label>
         <select id="edit-status">
           <option value="active" ${m.status==='active'?'selected':''}>Active</option>
           <option value="trial" ${m.status==='trial'?'selected':''}>Trial</option>
@@ -2887,9 +2912,18 @@ async function editMemberModal(id) {
           <option value="inactive" ${m.status==='inactive'?'selected':''}>Inactive</option>
         </select>
       </div>
+
+      <div style="font-size:11px;font-weight:500;color:var(--ink3);text-transform:uppercase;letter-spacing:.05em;margin-top:4px">Health & Notes</div>
+      <div class="fg"><label>Health Notes</label><textarea id="edit-health_notes" rows="2">${escHtml(m.health_notes||'')}</textarea></div>
+      <div class="fg"><label>Modifications</label><textarea id="edit-modifications_noted" rows="2">${escHtml(m.modifications_noted||'')}</textarea></div>
+      <div class="fg"><label>Staff Notes</label><textarea id="edit-notes" rows="2">${escHtml(m.notes||'')}</textarea></div>
+
+      <div style="font-size:11px;font-weight:500;color:var(--ink3);text-transform:uppercase;letter-spacing:.05em;margin-top:4px">Flags</div>
       <label class="cr"><input type="checkbox" id="edit-chair_modification" ${m.chair_modification?'checked':''}><span>Chair modification needed</span></label>
       <label class="cr"><input type="checkbox" id="edit-phone_call_during_class" ${m.phone_call_during_class?'checked':''}><span>Phone call during class</span></label>
       <label class="cr"><input type="checkbox" id="edit-master_managed" ${m.master_managed?'checked':''}><span>Master-managed</span></label>
+      <label class="cr"><input type="checkbox" id="edit-noemail" ${m.email_pref==='no_checkup_results'?'checked':''}><span>Do not send checkup result emails</span></label>
+      <label class="cr"><input type="checkbox" id="edit-encourage_emails" ${m.encourage_emails?'checked':''}><span>Encouragement emails</span></label>
     </div>
     <div style="display:flex;gap:8px;margin-top:16px">
       <button class="btn btn-p" onclick="saveMemberEdit('${id}')">Save Changes</button>
@@ -2898,21 +2932,39 @@ async function editMemberModal(id) {
 }
 
 async function saveMemberEdit(id) {
-  const fields = ['first_name','last_name','email','mail_merge_email','phone','preferred_name',
-    'address1','city','state','zip','health_notes','modifications_noted','notes'];
-  const update = {};
-  fields.forEach(k => {
-    const val = document.getElementById('edit-'+k)?.value.trim();
-    update[k] = val || null;
-  });
-  update.current_level = parseInt(document.getElementById('edit-current_level').value);
-  update.location_id = document.getElementById('edit-location_id').value || null;
-  update.status = document.getElementById('edit-status').value;
-  update.master_managed = document.getElementById('edit-master_managed')?.checked || false;
-  update.join_date = document.getElementById('edit-join_date')?.value || null;
-  update.chair_modification = document.getElementById('edit-chair_modification')?.checked || false;
-  update.phone_call_during_class = document.getElementById('edit-phone_call_during_class')?.checked || false;
-  await SB.from('members').update(update).eq('id', id);
+  const update = {
+    first_name: document.getElementById('edit-first_name')?.value.trim() || null,
+    last_name: document.getElementById('edit-last_name')?.value.trim() || null,
+    email: document.getElementById('edit-email')?.value.trim() || null,
+    mail_merge_email: document.getElementById('edit-mail_merge_email')?.value.trim() || null,
+    title_before: document.getElementById('edit-title_before')?.value.trim() || null,
+    preferred_name: document.getElementById('edit-preferred_name')?.value.trim() || null,
+    gender: document.getElementById('edit-gender')?.value || null,
+    pronoun: document.getElementById('edit-pronoun')?.value.trim() || null,
+    phone: document.getElementById('edit-phone')?.value.trim() || null,
+    phone2: document.getElementById('edit-phone2')?.value.trim() || null,
+    address1: document.getElementById('edit-address1')?.value.trim() || null,
+    address2: document.getElementById('edit-address2')?.value.trim() || null,
+    city: document.getElementById('edit-city')?.value.trim() || null,
+    state: document.getElementById('edit-state')?.value.trim() || null,
+    zip: document.getElementById('edit-zip')?.value.trim() || null,
+    country: document.getElementById('edit-country')?.value.trim() || 'US',
+    health_notes: document.getElementById('edit-health_notes')?.value.trim() || null,
+    modifications_noted: document.getElementById('edit-modifications_noted')?.value.trim() || null,
+    notes: document.getElementById('edit-notes')?.value.trim() || null,
+    join_date: document.getElementById('edit-join_date')?.value || null,
+    location_id: document.getElementById('edit-location_id')?.value || null,
+    current_level: parseInt(document.getElementById('edit-current_level')?.value) || 1,
+    orientation_group: document.getElementById('edit-orientation_group')?.value || 'group1',
+    status: document.getElementById('edit-status')?.value || 'active',
+    chair_modification: document.getElementById('edit-chair_modification')?.checked || false,
+    phone_call_during_class: document.getElementById('edit-phone_call_during_class')?.checked || false,
+    master_managed: document.getElementById('edit-master_managed')?.checked || false,
+    email_pref: document.getElementById('edit-noemail')?.checked ? 'no_checkup_results' : 'all',
+    encourage_emails: document.getElementById('edit-encourage_emails')?.checked || false,
+  };
+  const { error } = await SB.from('members').update(update).eq('id', id);
+  if (error) { alert('Error saving: ' + error.message); return; }
   openMemberModal(id);
   loadMembers();
   alert('✓ Member updated.');
@@ -5597,10 +5649,12 @@ function parseBulkRows(rows) {
     // Location matching
     const rawLoc = String(row['Location']||'').trim().toLowerCase();
     let locationId = null;
-    if (rawLoc.includes('paul') || rawLoc.includes('st paul') || rawLoc.includes('stpaul')) {
+    if (rawLoc.includes('assisi')) {
+      locationId = locations.find(l => l.name?.toLowerCase().includes('assisi'))?.id || null;
+    } else if (rawLoc.includes('paul') || rawLoc.includes('st paul') || rawLoc.includes('stpaul')) {
       locationId = locations.find(l => l.name?.toLowerCase().includes('paul'))?.id || null;
     } else if (rawLoc.includes('rochester') || rawLoc.includes('roch')) {
-      locationId = locations.find(l => l.name?.toLowerCase().includes('rochester'))?.id || null;
+      locationId = locations.find(l => l.name?.toLowerCase().includes('rochester') && !l.name?.toLowerCase().includes('assisi'))?.id || null;
     } else if (rawLoc) {
       locationId = locations.find(l => l.name?.toLowerCase().includes(rawLoc))?.id || null;
     }
@@ -5625,9 +5679,9 @@ function parseBulkRows(rows) {
     if (!joinDate) joinDate = new Date().toISOString().split('T')[0];
 
     // Flags
-    const chair   = /x/i.test(String(row['Chair']||''));
-    const master  = /x/i.test(String(row['MasterHandles']||''));
-    const noEmail = /x/i.test(String(row['Do Not email checkups']||''));
+    const chair   = /^\s*x\s*$/i.test(String(row['Chair']||''));
+    const master  = /^\s*x\s*$/i.test(String(row['MasterHandles']||''));
+    const noEmail = /^\s*x\s*$/i.test(String(row['Do Not email checkups']||''));
 
     // WhereLive — store in notes if present
     const whereLive = String(row['WhereLive']||'').trim();
@@ -5731,7 +5785,7 @@ async function runBulkImport() {
   const btn = preview.querySelector('.btn-p');
   btn.disabled = true; btn.textContent = 'Importing…';
 
-  let success = 0, skipped = 0, errors = [];
+  let success = 0, errors = [];
 
   for (const r of rows) {
     const memberData = {
@@ -5768,11 +5822,7 @@ async function runBulkImport() {
 
     const { data: member, error } = await SB.from('members').insert(memberData).select('id').single();
     if (error) {
-      if (error.code === '23505') {
-        skipped++;
-      } else {
-        errors.push(`${r.first_name} ${r.last_name}: ${error.message}`);
-      }
+      errors.push(`${r.first_name} ${r.last_name}: ${error.message}`);
       continue;
     }
 
@@ -5782,7 +5832,6 @@ async function runBulkImport() {
   }
 
   let msg = `<div class="alert a-s"><strong>✓ Import complete.</strong> ${success} members added.`;
-  if (skipped) msg += ` ${skipped} skipped (email already exists).`;
   if (errors.length) msg += `<br><strong>Errors:</strong><br>${errors.join('<br>')}`;
   msg += '</div>';
 
