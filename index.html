@@ -5567,6 +5567,12 @@ function todayLocal() {
 
 function fmtDate(d) {
   if (!d) return '—';
+  // Parse date string as local time to avoid UTC off-by-one
+  const parts = String(d).split('T')[0].split('-');
+  if (parts.length === 3) {
+    const dt = new Date(parseInt(parts[0]), parseInt(parts[1])-1, parseInt(parts[2]));
+    return dt.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+  }
   return new Date(d).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
 }
 function fmtDateTime(d) {
