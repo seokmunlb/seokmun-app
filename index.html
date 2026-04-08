@@ -615,7 +615,10 @@ textarea{resize:vertical;min-height:68px}
           <label class="cr"><input type="checkbox" id="ob-enc"><span>Use encouragement tone in emails</span></label>
           <label class="cr"><input type="checkbox" id="ob-oo1"><span>Flag for one-on-one scheduling</span></label>
           <label class="cr"><input type="checkbox" id="ob-master-managed"><span>Master-managed — Master handles this member directly</span></label>
-          <label class="cr"><input type="checkbox" id="ob-phone-call"><span>Phone call during class — member prefers to receive a call during practice sessions</span></label>
+          <label class="cr"><input type="checkbox" id="ob-phone-call" onchange="document.getElementById('ob-phone-call-row').style.display=this.checked?'block':'none'"><span>Phone call during class</span></label>
+          <div id="ob-phone-call-row" style="display:none;margin-left:26px">
+            <div class="fg"><label>Which class? (e.g. Wednesday, 7:30 PM)</label><input id="ob-phone-call-time" placeholder="e.g. Wednesday, 7:30 PM"></div>
+          </div>
           <div class="fg" style="margin-top:8px"><label>Staff Notes</label><textarea id="ob-notes" rows="2"></textarea></div>
 
           <div class="sdiv">Liability Waiver</div>
@@ -2313,7 +2316,7 @@ async function initApp() {
   populatePayMethodSelect();
 
   // Set today's date on date fields
-  const todayISO = new Date().toISOString().split('T')[0];
+  const todayISO = todayLocal();
   ['ob-join','ss-date','pay-date'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.value = todayISO;
@@ -2430,7 +2433,7 @@ function nav(page) {
     'onboard': () => {
       obTab('prospective');
       populateLocationSelects();
-      const today = new Date().toISOString().split('T')[0];
+      const today = todayLocal();
       const joinEl = document.getElementById('ob-join');
       const waiverEl = document.getElementById('ob-waiver-date');
       if (joinEl && !joinEl.value) joinEl.value = today;
@@ -2441,7 +2444,7 @@ function nav(page) {
     trials: loadTrials,
     'group-review': loadGroupReview,
     absent: loadAbsentMemberList,
-    'intro-invite': () => { document.getElementById('ii-date').value = new Date().toISOString().split('T')[0]; },
+    'intro-invite': () => { document.getElementById('ii-date').value = todayLocal(); },
     scripts: () => {
       scriptTab('warmup');
       const el = document.getElementById('scripts-reg-membership');
@@ -2735,7 +2738,7 @@ async function openMemberModal(id) {
       ${m.encourage_emails?'<span class="fp fp-enc">Encouragement emails</span>':''}
       ${m.flag_one_on_one?'<span class="fp fp-oo1">1:1 flagged</span>':''}
       ${m.master_managed?'<span class="fp" style="background:#f0e8ff;color:#4a1a7a">Master-managed</span>':''}
-      ${m.phone_call_during_class?'<span class="fp" style="background:#e8f8f0;color:#1a5a3a">Phone call during class</span>':''}
+      ${m.phone_call_during_class?`<span class="fp" style="background:#e8f8f0;color:#1a5a3a">📞 Call${m.phone_call_class_time?' — '+m.phone_call_class_time:''}</span>`:''}
       ${m.chair_modification?'<span class="fp">Chair modification</span>':''}
       ${m.doctor_clearance_on_file?'<span class="fp">Doctor clearance on file</span>':''}
       ${m.fee_overdue_flag&&!orgConfig.fees_globally_free?'<span class="fp fp-due">Fee overdue</span>':''}
@@ -2822,9 +2825,9 @@ async function quickToggle(id, field, currentVal) {
 async function changeStatus(id, status) {
   if (!status) return;
   const update = { status };
-  if (status === 'active') update.converted_to_active_date = new Date().toISOString().split('T')[0];
-  if (status === 'hold') update.hold_start_date = new Date().toISOString().split('T')[0];
-  if (status === 'inactive') update.inactive_date = new Date().toISOString().split('T')[0];
+  if (status === 'active') update.converted_to_active_date = todayLocal();
+  if (status === 'hold') update.hold_start_date = todayLocal();
+  if (status === 'inactive') update.inactive_date = todayLocal();
   await SB.from('members').update(update).eq('id', id);
   openMemberModal(id);
   loadMembers();
@@ -2920,7 +2923,10 @@ async function editMemberModal(id) {
 
       <div style="font-size:11px;font-weight:500;color:var(--ink3);text-transform:uppercase;letter-spacing:.05em;margin-top:4px">Flags</div>
       <label class="cr"><input type="checkbox" id="edit-chair_modification" ${m.chair_modification?'checked':''}><span>Chair modification needed</span></label>
-      <label class="cr"><input type="checkbox" id="edit-phone_call_during_class" ${m.phone_call_during_class?'checked':''}><span>Phone call during class</span></label>
+      <label class="cr"><input type="checkbox" id="edit-phone_call_during_class" ${m.phone_call_during_class?'checked':''} onchange="document.getElementById('edit-phone-call-row').style.display=this.checked?'block':'none'"><span>Phone call during class</span></label>
+      <div id="edit-phone-call-row" style="display:${m.phone_call_during_class?'block':'none'};margin-left:26px">
+        <div class="fg"><label>Which class? (e.g. Wednesday, 7:30 PM)</label><input id="edit-phone_call_class_time" value="${escHtml(m.phone_call_class_time||'')}"></div>
+      </div>
       <label class="cr"><input type="checkbox" id="edit-master_managed" ${m.master_managed?'checked':''}><span>Master-managed</span></label>
       <label class="cr"><input type="checkbox" id="edit-noemail" ${m.email_pref==='no_checkup_results'?'checked':''}><span>Do not send checkup result emails</span></label>
       <label class="cr"><input type="checkbox" id="edit-encourage_emails" ${m.encourage_emails?'checked':''}><span>Encouragement emails</span></label>
@@ -2959,6 +2965,7 @@ async function saveMemberEdit(id) {
     status: document.getElementById('edit-status')?.value || 'active',
     chair_modification: document.getElementById('edit-chair_modification')?.checked || false,
     phone_call_during_class: document.getElementById('edit-phone_call_during_class')?.checked || false,
+    phone_call_class_time: document.getElementById('edit-phone_call_class_time')?.value.trim() || null,
     master_managed: document.getElementById('edit-master_managed')?.checked || false,
     email_pref: document.getElementById('edit-noemail')?.checked ? 'no_checkup_results' : 'all',
     encourage_emails: document.getElementById('edit-encourage_emails')?.checked || false,
@@ -3001,7 +3008,7 @@ async function changeGroup(id, currentGroup) {
   if (note === null) return;
   await SB.from('members').update({
     orientation_group: newGroup,
-    group_changed_date: new Date().toISOString().split('T')[0],
+    group_changed_date: todayLocal(),
     group_changed_by: currentStaff?.id,
     group_change_note: note || null
   }).eq('id', id);
@@ -3059,7 +3066,7 @@ async function addProspective() {
     phone: document.getElementById('pro-phone').value.trim() || null,
     location_id: loc || locations[0]?.id,
     status: 'prospective',
-    join_date: new Date().toISOString().split('T')[0],
+    join_date: todayLocal(),
     how_heard: document.getElementById('pro-how-heard').value.trim() || null,
     notes: document.getElementById('pro-notes').value.trim() || null,
     orientation_group: 'group1',
@@ -3216,6 +3223,7 @@ async function enrollMember() {
     flag_one_on_one: document.getElementById('ob-oo1').checked,
     master_managed: document.getElementById('ob-master-managed')?.checked || false,
     phone_call_during_class: document.getElementById('ob-phone-call')?.checked || false,
+    phone_call_class_time: document.getElementById('ob-phone-call-time')?.value.trim() || null,
     notes: document.getElementById('ob-notes').value.trim() || null,
   };
 
@@ -3340,7 +3348,7 @@ function resetEnrollForm() {
     const el = document.getElementById(id); if (el) el.checked = id.startsWith('we-') ? true : false;
   });
   document.getElementById('ob-level').value = '1';
-  document.getElementById('ob-join').value = new Date().toISOString().split('T')[0];
+  document.getElementById('ob-join').value = todayLocal();
   convertingProspectiveId = null;
   window.scrollTo(0,0);
 }
@@ -3384,7 +3392,7 @@ async function loadProspectiveList() {
 }
 
 async function markAttendedIntro(id, singleDay) {
-  const date = prompt('Date attended intro class (YYYY-MM-DD):', new Date().toISOString().split('T')[0]);
+  const date = prompt('Date attended intro class (YYYY-MM-DD):', todayLocal());
   if (!date) return;
   await SB.from('members').update({
     attended_intro: true,
@@ -3441,7 +3449,7 @@ async function convertToMember(id, first, last) {
   if (m.location_id) { const el = document.getElementById('ob-loc'); if (el) el.value = m.location_id; }
 
   // Set join date to today
-  const today = new Date().toISOString().split('T')[0];
+  const today = todayLocal();
   set('ob-join', today);
   set('ob-waiver-date', today);
 
@@ -3499,7 +3507,7 @@ async function loadObTracker() {
 async function markAppInstalled(memberId) {
   await SB.from('onboarding').update({
     app_installed: true,
-    app_installed_date: new Date().toISOString().split('T')[0],
+    app_installed_date: todayLocal(),
     app_confirmed_by: currentStaff?.id
   }).eq('member_id', memberId);
   loadObTracker();
@@ -4000,7 +4008,7 @@ async function markOO1Complete(luId) {
   const healthNote = prompt('Add health/modification notes from this 1:1 session (optional):');
 
   await SB.from('level_up_events').update({
-    one_on_one_completed: true, one_on_one_completed_date: new Date().toISOString().split('T')[0],
+    one_on_one_completed: true, one_on_one_completed_date: todayLocal(),
     health_notes_updated: !!healthNote
   }).eq('id', luId);
 
@@ -4122,7 +4130,7 @@ ${org}`;
 async function convertTrial(memberId) {
   if (!confirm('Convert this member to active status?')) return;
   await SB.from('members').update({
-    status: 'active', converted_to_active_date: new Date().toISOString().split('T')[0]
+    status: 'active', converted_to_active_date: todayLocal()
   }).eq('id', memberId);
   await SB.from('trial_expirations').update({
     outcome: 'converted_to_active', staff_confirmed: true, staff_confirmed_by: currentStaff?.id,
@@ -4158,9 +4166,9 @@ async function resolveGroupReview(memberId, decision) {
     orientation_group: decision,
     level6_review_done: true,
     level6_review_done_by: currentStaff?.id,
-    level6_review_done_date: new Date().toISOString().split('T')[0],
+    level6_review_done_date: todayLocal(),
     level6_review_note: note||null,
-    group_changed_date: decision==='group2' ? new Date().toISOString().split('T')[0] : null,
+    group_changed_date: decision==='group2' ? todayLocal() : null,
     group_changed_by: decision==='group2' ? currentStaff?.id : null,
     group_change_note: decision==='group2' ? (note||'Moved at Level 6 review') : null
   }).eq('id', memberId);
@@ -4557,7 +4565,7 @@ async function loadPaymentPageData() {
     (members||[]).map(m => `<option value="${m.id}">${m.first_name} ${m.last_name}</option>`).join('');
 
   populatePayMethodSelect();
-  document.getElementById('pay-date').value = new Date().toISOString().split('T')[0];
+  document.getElementById('pay-date').value = todayLocal();
   document.getElementById('bp-start').value = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0];
   document.getElementById('bp-end').value = new Date(new Date().getFullYear(), new Date().getMonth()+1, 0).toISOString().split('T')[0];
   document.getElementById('bp-due').value = new Date(new Date().getFullYear(), new Date().getMonth()+1, 1).toISOString().split('T')[0];
@@ -5543,6 +5551,20 @@ ${org}`;
 // ══════════════════════════════════════════════════════════
 //  UTILITIES
 // ══════════════════════════════════════════════════════════
+// Returns YYYY-MM-DD in LOCAL time (avoids UTC off-by-one)
+function localDateStr(d) {
+  if (!d) return null;
+  const dt = d instanceof Date ? d : new Date(d);
+  const y = dt.getFullYear();
+  const m = String(dt.getMonth()+1).padStart(2,'0');
+  const day = String(dt.getDate()).padStart(2,'0');
+  return `${y}-${m}-${day}`;
+}
+
+function todayLocal() {
+  return localDateStr(new Date());
+}
+
 function fmtDate(d) {
   if (!d) return '—';
   return new Date(d).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
@@ -5669,14 +5691,14 @@ function parseBulkRows(rows) {
     // Join date
     let joinDate = null;
     const jd = row['Join Date'];
-    if (jd instanceof Date) joinDate = jd.toISOString().split('T')[0];
+    if (jd instanceof Date) joinDate = localDateStr(jd);
     else if (typeof jd === 'string' && jd.trim()) joinDate = jd.trim();
     else if (typeof jd === 'number') {
       // Excel serial date
       const d = new Date(Math.round((jd - 25569) * 86400 * 1000));
-      joinDate = d.toISOString().split('T')[0];
+      joinDate = localDateStr(d);
     }
-    if (!joinDate) joinDate = new Date().toISOString().split('T')[0];
+    // If no join date, leave null — don't default to today
 
     // Flags
     const chair   = /^\s*x\s*$/i.test(String(row['Chair']||''));
