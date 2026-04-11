@@ -2937,12 +2937,10 @@ async function editMemberModal(id) {
       <button class="btn btn-sm" onclick="cancelMemberEdit('${id}')">Cancel</button>
     </div>`;
 
-  // Store original values for dirty checking
-  setTimeout(() => {
-    document.querySelectorAll('#mm-body input, #mm-body select, #mm-body textarea').forEach(el => {
-      el.dataset.original = el.type === 'checkbox' ? el.checked.toString() : el.value;
-    });
-  }, 50);
+  // Store original values immediately for dirty checking
+  document.querySelectorAll('#mm-body input, #mm-body select, #mm-body textarea').forEach(el => {
+    el.dataset.original = el.type === 'checkbox' ? el.checked.toString() : el.value;
+  });
 }
 
 function closeMemberModal() {
