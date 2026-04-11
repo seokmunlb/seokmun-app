@@ -3572,6 +3572,11 @@ function memberRowHTML(m, existing) {
         <option value="" ${!outcome?'selected':''}>— no result —</option>
         <option value="continue" ${outcome==='continue'?'selected':''}>Continue</option>
         <option value="progress" ${outcome==='progress'?'selected':''}>Progress</option>
+        <option value="l3_daemaek" ${outcome==='l3_daemaek'?'selected':''}>L3: Daemaek rotation ✓</option>
+        <option value="l3_2min" ${outcome==='l3_2min'?'selected':''}>L3: 2-min rotation ✓</option>
+        <option value="l4_sojucheon" ${outcome==='l4_sojucheon'?'selected':''}>L4: Sojucheon rotation ✓</option>
+        <option value="l4_2min" ${outcome==='l4_2min'?'selected':''}>L4: 2-min rotation ✓</option>
+        <option value="belly_massage" ${outcome==='belly_massage'?'selected':''}>Try Belly Massage</option>
         <option value="encouragement" ${outcome==='encouragement'?'selected':''}>Encouragement</option>
         <option value="schedule_oo1" ${outcome==='schedule_oo1'?'selected':''}>Schedule 1:1</option>
         <option value="level_up" ${outcome==='level_up'?'selected':''}>Level Up ▲</option>
@@ -3738,7 +3743,7 @@ async function saveSession() {
   const emailsToShow = [];
   const sessionDate = document.getElementById('ss-date').value;
   const conductorData = staffList.find(s => s.id === document.getElementById('ss-conductor').value);
-  const conductorName = conductorData ? `${conductorData.first_name} ${conductorData.last_name}` : 'the Master';
+  const conductorName = conductorData ? `${conductorData.first_name} ${conductorData.last_name}` : 'Grand Master';
   const org = orgConfig.org_subtitle || 'Seokmun Hoheup Practice';
 
   // Separate in-person and online members
@@ -3763,6 +3768,26 @@ async function saveSession() {
       const { data: downLevelData } = await SB.from('practice_levels').select('*').eq('level_number', downLevel).single();
       subject = `Your Checkup Result — ${fmtDate(sessionDate)} · ${org}`;
       body = generateLevelDownEmail(m, r, downLevelData, conductorName, fmtDate(sessionDate), org);
+      commType = 'checkup_result';
+    } else if (r.outcome === 'l3_daemaek') {
+      subject = `Level 3 Milestone — Daemaek Rotation Complete · ${org}`;
+      body = generateL3DaemaekEmail({...m, result_notes: r.result_notes}, conductorName, fmtDate(sessionDate), org);
+      commType = 'checkup_result';
+    } else if (r.outcome === 'l3_2min') {
+      subject = `Level 3 Milestone — 2-Minute Rotation Complete · ${org}`;
+      body = generateL3TwoMinEmail({...m, result_notes: r.result_notes}, conductorName, fmtDate(sessionDate), org);
+      commType = 'checkup_result';
+    } else if (r.outcome === 'l4_sojucheon') {
+      subject = `Level 4 Milestone — Sojucheon Rotation Complete · ${org}`;
+      body = generateL4SojucheonEmail({...m, result_notes: r.result_notes}, conductorName, fmtDate(sessionDate), org);
+      commType = 'checkup_result';
+    } else if (r.outcome === 'l4_2min') {
+      subject = `Level 4 Milestone — 2-Minute Rotation Complete · ${org}`;
+      body = generateL4TwoMinEmail({...m, result_notes: r.result_notes}, conductorName, fmtDate(sessionDate), org);
+      commType = 'checkup_result';
+    } else if (r.outcome === 'belly_massage') {
+      subject = `Your Practice Tip — Belly Massage · ${org}`;
+      body = generateBellyMassageEmail({...m, result_notes: r.result_notes}, conductorName, fmtDate(sessionDate), org);
       commType = 'checkup_result';
     } else {
       subject = `Your Checkup Result — ${fmtDate(sessionDate)} · ${org}`;
@@ -5034,6 +5059,192 @@ ${org}
 ${loc?.name||''}`;
 }
 
+function generateBellyMassageEmail(m, conductorName, sessionDate, org) {
+  const notesBlock = m.result_notes ? `\nNote from Grand Master ${conductorName}:\n${m.result_notes}\n` : '';
+  return `Dear ${m.first_name},
+
+Your Seokmun Hoheup Practice checkup has been completed.
+
+Checkup Date: ${sessionDate}
+Assessed by: Grand Master ${conductorName}
+${notesBlock}
+Grand Master ${conductorName} has recommended that you try belly massage to help your breath reach the lower Danjeon. This is a gentle and effective tool to support your practice.
+
+────────────────────────────────────────
+BELLY MASSAGE — GRAND MASTER'S GUIDANCE
+April 2024
+────────────────────────────────────────
+
+When joining this practice as a new member, changing one's breath is challenging and not easily changed by oneself. This is the main program in Korea. Once the belly is relaxed and habits let down, the breathing will go better and practice will be more enjoyable.
+
+The breathing reaching the lower Danjeon is crucial. Try it out and ask questions. Use a soccer ball to self-massage. Also try a big bowl with a towel on top to massage. If you feel tension in the belly, try gently and more often by yourself to make practice more efficient and enjoyable.
+
+COMPLETE ORDER OF PRACTICE
+────────────────────────────────────────
+1. Soccer ball or belly massage (optional)
+2. Warm-up exercises
+3. Haenggong (the 12 postures)
+4. Personal Haenggong — preparatory reclining exercises (optional)
+   See: https://vimeo.com — Personal Haenggong starts at 12:19
+5. Belly massage (optional) — with hand or soccer ball
+6. Main breathing
+7. Recovery exercises
+
+HOW TO DO BELLY MASSAGE
+────────────────────────────────────────
+Put a towel over the area below the Seokmun point. When the diaphragm is warm, the heart becomes warm too.
+
+· Rub your hands together to warm them. Place them on the diaphragm.
+· Starting at the sternum, rub with the thumb pad side to side. Breathe naturally. Feel the diaphragm movement. Close your eyes and relax the torso muscles.
+· Cup your right hand on top of your left hand and massage side to side (moving right to left) in a rolling motion, starting just right of the navel. This is the muscle area that needs massaging to help it open and release.
+· Next, place your palm on the navel and draw clockwise circles.
+· Then place your left palm under the diaphragm and your right palm over the navel. Hold and breathe.
+· Finally, place your left index finger on the Seokmun point and send energy. Ask yourself: do you feel the Danjeon better?
+
+In higher levels, one can be self-aware and relax the belly independently — but at Levels 1 and 2 this is not easy without external help from an instructor, oneself, or a soccer ball.
+
+Please try this before your next practice session and let us know how it goes. We are here to support you.
+
+Warm regards,
+${org}
+
+────────────────────────────────────────
+© 2025 Hanjo. All rights reserved.
+SEOKMUN™ and SEOKMUN HOHEUP™ are trademarks of Hanjo.`;
+}
+
+function generateL4SojucheonEmail(m, conductorName, sessionDate, org) {
+  const notesBlock = m.result_notes ? `\nNote from Grand Master ${conductorName}:\n${m.result_notes}\n` : '';
+  return `Dear ${m.first_name},
+
+Your Seokmun Hoheup Practice checkup has been completed.
+
+Checkup Date: ${sessionDate}
+Assessed by: Grand Master ${conductorName}
+Level: 4 — Sojucheon
+
+Grand Master ${conductorName} has confirmed that Ki is moving along the path of the Conception and Governor meridians. This is a meaningful milestone in your Level 4 practice.
+${notesBlock}
+WHAT THIS MEANS
+────────────────────────────────────────
+The Sojucheon rotation has begun. The next step is to sustain this rotation for a full 2 minutes. Continue your daily practice with this as your focus.
+
+LEVEL 4 SHIMBEOP
+────────────────────────────────────────
+"I move Ki along the path of the Conception and Governor meridians."
+
+Recite mentally, silently with a fervent heart, 3 times at the start of Breathing Practice. Focus your consciousness on the Danjeon centered at the Seokmun, and sustain the rotation throughout your practice.
+
+Please reach out if you have any questions about your practice.
+
+Warm regards,
+${org}
+
+────────────────────────────────────────
+© 2025 Hanjo. All rights reserved.
+SEOKMUN™ and SEOKMUN HOHEUP™ are trademarks of Hanjo.`;
+}
+
+function generateL4TwoMinEmail(m, conductorName, sessionDate, org) {
+  const notesBlock = m.result_notes ? `\nNote from Grand Master ${conductorName}:\n${m.result_notes}\n` : '';
+  return `Dear ${m.first_name},
+
+Your Seokmun Hoheup Practice checkup has been completed.
+
+Checkup Date: ${sessionDate}
+Assessed by: Grand Master ${conductorName}
+Level: 4 — Sojucheon
+
+Congratulations — Grand Master ${conductorName} has confirmed that you have completed the 2-minute Sojucheon rotation. This is the final review milestone of Level 4.
+${notesBlock}
+WHAT THIS MEANS
+────────────────────────────────────────
+You have sustained Ki moving along the Conception and Governor meridians for a full 2 minutes. This completes your Level 4 review. Grand Master will assess your readiness to advance to Level 5 at your next checkup.
+
+Continue your daily practice maintaining the full 2-minute rotation. This sustained effort prepares you for the next stage of your practice.
+
+LEVEL 4 SHIMBEOP
+────────────────────────────────────────
+"I move Ki along the path of the Conception and Governor meridians."
+
+Recite mentally, silently with a fervent heart, 3 times at the start of Breathing Practice.
+
+Please reach out if you have any questions.
+
+Warm regards,
+${org}
+
+────────────────────────────────────────
+© 2025 Hanjo. All rights reserved.
+SEOKMUN™ and SEOKMUN HOHEUP™ are trademarks of Hanjo.`;
+}
+
+function generateL3DaemaekEmail(m, conductorName, sessionDate, org) {
+  const notesBlock = m.result_notes ? `\nNote from Grand Master ${conductorName}:\n${m.result_notes}\n` : '';
+  return `Dear ${m.first_name},
+
+Your Seokmun Hoheup Practice checkup has been completed.
+
+Checkup Date: ${sessionDate}
+Assessed by: Grand Master ${conductorName}
+Level: 3 — Daemaek
+
+Grand Master ${conductorName} has confirmed that you have completed the Daemaek rotation. This is a meaningful milestone in your Level 3 practice — the energy is moving along the path of the lower Danjeon Yeouiju Daemaek.
+${notesBlock}
+WHAT THIS MEANS
+────────────────────────────────────────
+You have established the Daemaek rotation. The next step is to sustain this rotation for a full 2 minutes. Continue your daily practice with this as your focus.
+
+LEVEL 3 SHIMBEOP
+────────────────────────────────────────
+"I move Ki (energy) along the path of the lower Danjeon Yeouiju Daemaek."
+
+Recite mentally, silently with a fervent heart, 3 times at the start of Breathing Practice. Focus your consciousness on the Danjeon centered at the Seokmun, and sustain the rotation throughout your practice.
+
+Please reach out if you have any questions about your practice.
+
+Warm regards,
+${org}
+
+────────────────────────────────────────
+© 2025 Hanjo. All rights reserved.
+SEOKMUN™ and SEOKMUN HOHEUP™ are trademarks of Hanjo.`;
+}
+
+function generateL3TwoMinEmail(m, conductorName, sessionDate, org) {
+  const notesBlock = m.result_notes ? `\nNote from Grand Master ${conductorName}:\n${m.result_notes}\n` : '';
+  return `Dear ${m.first_name},
+
+Your Seokmun Hoheup Practice checkup has been completed.
+
+Checkup Date: ${sessionDate}
+Assessed by: Grand Master ${conductorName}
+Level: 3 — Daemaek
+
+Congratulations — Grand Master ${conductorName} has confirmed that you have completed the 2-minute Daemaek rotation. This is the final review milestone of Level 3.
+${notesBlock}
+WHAT THIS MEANS
+────────────────────────────────────────
+You have sustained the Daemaek rotation for a full 2 minutes. This completes your Level 3 review. Grand Master will assess your readiness to advance to Level 4 at your next checkup.
+
+Continue your daily practice maintaining the full 2-minute rotation. This sustained effort is what prepares the Ki to move along the Conception and Governor meridians in Level 4.
+
+LEVEL 3 SHIMBEOP
+────────────────────────────────────────
+"I move Ki (energy) along the path of the lower Danjeon Yeouiju Daemaek."
+
+Recite mentally, silently with a fervent heart, 3 times at the start of Breathing Practice.
+
+Please reach out if you have any questions.
+
+Warm regards,
+${org}
+
+────────────────────────────────────────
+© 2025 Hanjo. All rights reserved.
+SEOKMUN™ and SEOKMUN HOHEUP™ are trademarks of Hanjo.`;
+}
+
 function generateCheckupResultEmail(m, r, levelData, conductorName, sessionDate, org) {
   const levelName = levelData?.short_name || 'Level ' + r.level_assessed;
   const notesBlock = r.result_notes ? `\nResult Note:\n${r.result_notes}\n` : '';
@@ -5264,7 +5475,7 @@ SEOKMUN™ and SEOKMUN HOHEUP™ are trademarks of Hanjo.`;
 
 Welcome to Level 9 — Pungsubeop!
 
-${r.result_notes?`NOTES FROM THE MASTER\n────────────────────────────\n${r.result_notes}\n\n`:''}Pungsubeop is reading the emotions of all things between heaven and earth.
+${r.result_notes?`NOTES FROM GRAND MASTER ${conductorName}\n────────────────────────────\n${r.result_notes}\n\n`:''}Pungsubeop is reading the emotions of all things between heaven and earth.
 
 Haenggong: Gungeulbeop — 「오직 하나를 위한 법(法)」
 
@@ -5295,7 +5506,7 @@ SEOKMUN™ and SEOKMUN HOHEUP™ are trademarks of Hanjo.`;
 
 Welcome to Level 8 — Gwiibeop!
 
-${r.result_notes?`NOTES FROM THE MASTER\n────────────────────────────\n${r.result_notes}\n\n`:''}Gwiibeop is becoming one with all things in the universe.
+${r.result_notes?`NOTES FROM GRAND MASTER ${conductorName}\n────────────────────────────\n${r.result_notes}\n\n`:''}Gwiibeop is becoming one with all things in the universe.
 
 Haenggong: Same postures as Level 7 (Wonhabeop 原下法).
 
@@ -5320,7 +5531,7 @@ SEOKMUN™ and SEOKMUN HOHEUP™ are trademarks of Hanjo.`;
 
 Welcome to Level 7 — Ilwolseongbeop!
 
-${r.result_notes?`NOTES FROM THE MASTER\n────────────────────────────\n${r.result_notes}\n\n`:''}Ilwolseongbeop is becoming one with the sun, the moon, and the stars.
+${r.result_notes?`NOTES FROM GRAND MASTER ${conductorName}\n────────────────────────────\n${r.result_notes}\n\n`:''}Ilwolseongbeop is becoming one with the sun, the moon, and the stars.
 
 Haenggong: Wonhabeop — 「하늘에서 법(法)이 내려오네」
 
@@ -5351,7 +5562,7 @@ SEOKMUN™ and SEOKMUN HOHEUP™ are trademarks of Hanjo.`;
 
 Welcome to Level 6 — Daejucheon!
 
-${r.result_notes?`NOTES FROM THE MASTER\n────────────────────────────\n${r.result_notes}\n\n`:''}Daejucheon is the creation of Johwa with the Ki of Cheonjiin. You are now entering the emotional tier of the practice.
+${r.result_notes?`NOTES FROM GRAND MASTER ${conductorName}\n────────────────────────────\n${r.result_notes}\n\n`:''}Daejucheon is the creation of Johwa with the Ki of Cheonjiin. You are now entering the emotional tier of the practice.
 
 Haenggong: Jineunbeop — 「진법(真法)의 은혜로스마이 나투노라」
 
@@ -5378,7 +5589,7 @@ SEOKMUN™ and SEOKMUN HOHEUP™ are trademarks of Hanjo.`;
 
 Welcome to Level 5 — Onyang!
 
-${r.result_notes?`NOTES FROM THE MASTER\n────────────────────────────\n${r.result_notes}\n\n`:''}Onyang is the creation of a revival point for Jinki within the body.
+${r.result_notes?`NOTES FROM GRAND MASTER ${conductorName}\n────────────────────────────\n${r.result_notes}\n\n`:''}Onyang is the creation of a revival point for Jinki within the body.
 
 Haenggong: Seseonbeop — 「세상에 신선(神仙)이 되는 법(法)」
 
@@ -5409,7 +5620,7 @@ SEOKMUN™ and SEOKMUN HOHEUP™ are trademarks of Hanjo.`;
 
 Welcome to Level 4 — Sojucheon!
 
-${r.result_notes?`NOTES FROM THE MASTER\n────────────────────────────\n${r.result_notes}\n\n`:''}Sojucheon is the awakening of the microcosm within the body.
+${r.result_notes?`NOTES FROM GRAND MASTER ${conductorName}\n────────────────────────────\n${r.result_notes}\n\n`:''}Sojucheon is the awakening of the microcosm within the body.
 
 Haenggong: Hwajinbeop — "When one illuminates oneself like fire and burns away one’s inner dimness, the path to finding One’s Essential Self will become clear."
 
@@ -5421,9 +5632,9 @@ Recite mentally, silently with a fervent heart, briefly yet powerfully, 3 times 
 
 REVIEW ORDER
 ────────────────────────────────────────
-· Level 1–2 Shimbeop — until accumulation is full
-· Level 3 Shimbeop — rotate Daemaek until it fully rotates
-· Level 4 Shimbeop — move Ki along the Conception and Governor meridians
+· Level 1–2 Shimbeop — "Accumulate Energy" until accumulation is full
+· Level 3 Shimbeop — "Rotate Daemaek" until it fully rotates
+· Level 4 Shimbeop — "Rotate Sojucheon" until Ki moves along the Conception and Governor meridians
 
 Breathing Posture: Seated
 
@@ -5446,7 +5657,7 @@ Attached is a detailed document to use in practice, and a video showing Level 3 
 
 Please let us know if you have any questions or would like in-person help.
 
-${r.result_notes?`NOTES FROM THE MASTER\n────────────────────────────\n${r.result_notes}\n\n`:''}We are also sending you updated practice documents containing the newest terminology from the new book. Please use these in your daily practice and let us know if you have any questions.
+${r.result_notes?`NOTES FROM GRAND MASTER ${conductorName}\n────────────────────────────\n${r.result_notes}\n\n`:''}We are also sending you updated practice documents containing the newest terminology from the new book. Please use these in your daily practice and let us know if you have any questions.
 
 NEW LEVEL 3 SHIMBEOP
 ────────────────────────────────────────
@@ -5504,7 +5715,7 @@ Congratulations — you have advanced to ${newLevel?.short_name||'Level '+toLeve
 Checkup Date: ${sessionDate}
 Assessed by: ${conductorName}
 
-${r.result_notes?`NOTES FROM THE MASTER\n────────────────────────────\n${r.result_notes}\n\n`:''}YOUR NEXT STEPS
+${r.result_notes?`NOTES FROM GRAND MASTER ${conductorName}\n────────────────────────────\n${r.result_notes}\n\n`:''}YOUR NEXT STEPS
 ────────────────────────────
 The Master would like to meet with you for a personal 1:1 session to introduce your new level. A separate invitation to schedule this session will follow.
 
