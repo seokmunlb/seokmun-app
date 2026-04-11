@@ -6119,7 +6119,28 @@ async function runBulkImport() {
 }
 
 function copyText(text) {
-  navigator.clipboard.writeText(text);
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(() => {
+      // Success — find the button that was clicked and briefly show feedback
+    }).catch(() => copyTextFallback(text));
+  } else {
+    copyTextFallback(text);
+  }
+}
+
+function copyTextFallback(text) {
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0';
+  document.body.appendChild(ta);
+  ta.focus();
+  ta.select();
+  try {
+    document.execCommand('copy');
+  } catch(e) {
+    alert('Could not copy automatically. Please select all text in the email preview and copy manually (Ctrl+A, Ctrl+C).');
+  }
+  document.body.removeChild(ta);
 }
 
 function escAttr(s) { return (s||'').replace(/'/g,"\\'").replace(/"/g,'&quot;'); }
