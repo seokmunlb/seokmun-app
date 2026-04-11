@@ -2162,10 +2162,10 @@ I have read and understood this waiver and agree freely and voluntarily.</div>
 <!-- ══════════ MEMBER DETAIL MODAL ══════════ -->
 <div class="overlay" id="modal-member">
   <div class="modal">
-    <div class="mh"><div class="mt" id="mm-title">Member</div><button class="mx" onclick="closeModal('modal-member')">×</button></div>
+    <div class="mh"><div class="mt" id="mm-title">Member</div><button class="mx" onclick="closeMemberModal()">×</button></div>
     <div class="mb" id="mm-body"></div>
     <div class="mf">
-      <button class="btn" onclick="closeModal('modal-member')">Close</button>
+      <button class="btn" onclick="closeMemberModal()">Close</button>
       <button class="btn btn-sky" id="mm-checkup-btn">Record Checkup</button>
     </div>
   </div>
@@ -2243,6 +2243,7 @@ let currentStaff = null;
 let currentSessionId = null;
 let sessionAddedMembers = []; // members added to current checkup session
 let convertingProspectiveId = null; // ID of prospective being converted
+let editingMemberId = null; // ID of member currently being edited
 let currentEmailContext = null; // {comm_type, member_id, subject, body, ...}
 let editingLevelNum = null;
 let locations = [];
@@ -2663,8 +2664,7 @@ async function loadMembers() {
     <tr onclick="openMemberModal('${m.id}')">
       <td><div class="mn">${m.first_name} ${m.last_name}</div><div class="me">${m.email}</div></td>
       <td>
-        <span class="badge b-${m.level_tier}">Lvl ${m.current_level} — ${m.level_name}</span>
-      </td>
+        <span class="badge b-${m.level_tier}">Lvl ${m.current_level} — ${m.level_name}${m.level_milestone==='2min_rotation'?' · 2-min rotation':''}</span>      </td>
       <td><span class="badge b-${m.orientation_group}">${m.orientation_group==='group1'?'Group 1':'Group 2'}</span></td>
       <td>${statusBadge(m.status)}</td>
       <td style="font-size:12px">${m.location_name}</td>
@@ -2723,7 +2723,7 @@ async function openMemberModal(id) {
       <div>
         <div class="sdiv" style="margin-top:0">Practice</div>
         <div style="font-size:13px;line-height:2">
-          <div><strong>Level:</strong> ${m.current_level} — ${m.level_name}</div>
+          <div><strong>Level:</strong> ${m.current_level} — ${m.level_name}${m.level_milestone==='2min_rotation'?' <span style="color:var(--ink3);font-size:12px">· 2-min rotation</span>':''}</div>
           <div><strong>Tier:</strong> <span class="badge b-${m.level_tier}">${m.level_tier}</span></div>
           <div><strong>Group:</strong> <span class="badge b-${m.orientation_group}">${m.orientation_group==='group1'?'Group 1 (Physical)':'Group 2 (Energy)'}</span></div>
           <div><strong>Status:</strong> ${statusBadge(m.status)}</div>
@@ -2835,6 +2835,7 @@ async function changeStatus(id, status) {
 }
 
 async function editMemberModal(id) {
+  editingMemberId = id;
   const { data: m } = await SB.from('members').select('*').eq('id', id).single();
   if (!m) return;
 
@@ -2933,8 +2934,48 @@ async function editMemberModal(id) {
     </div>
     <div style="display:flex;gap:8px;margin-top:16px">
       <button class="btn btn-p" onclick="saveMemberEdit('${id}')">Save Changes</button>
-      <button class="btn btn-sm" onclick="openMemberModal('${id}')">Cancel</button>
+      <button class="btn btn-sm" onclick="cancelMemberEdit('${id}')">Cancel</button>
     </div>`;
+
+  // Store original values for dirty checking
+  setTimeout(() => {
+    document.querySelectorAll('#mm-body input, #mm-body select, #mm-body textarea').forEach(el => {
+      el.dataset.original = el.type === 'checkbox' ? el.checked.toString() : el.value;
+    });
+  }, 50);
+}
+
+function closeMemberModal() {
+  if (editingMemberId) {
+    cancelMemberEdit(editingMemberId);
+  } else {
+    closeModal('modal-member');
+  }
+}
+
+function cancelMemberEdit(id) {
+  const mm = document.getElementById('mm-body');
+  const inputs = mm.querySelectorAll('input, select, textarea');
+  let dirty = false;
+  inputs.forEach(el => {
+    if (el.dataset.original !== undefined) {
+      if (el.type === 'checkbox') {
+        if (el.checked.toString() !== el.dataset.original) dirty = true;
+      } else {
+        if (el.value !== el.dataset.original) dirty = true;
+      }
+    }
+  });
+
+  if (dirty) {
+    const action = confirm('You have unsaved changes. Click OK to save, or Cancel to discard.');
+    if (action) {
+      saveMemberEdit(id);
+      return;
+    }
+  }
+  editingMemberId = null;
+  openMemberModal(id);
 }
 
 async function saveMemberEdit(id) {
@@ -2972,6 +3013,7 @@ async function saveMemberEdit(id) {
   };
   const { error } = await SB.from('members').update(update).eq('id', id);
   if (error) { alert('Error saving: ' + error.message); return; }
+  editingMemberId = null;
   openMemberModal(id);
   loadMembers();
   alert('✓ Member updated.');
@@ -3566,16 +3608,14 @@ function memberRowHTML(m, existing) {
   const inPerson = existing?.in_person || false;
   return `<tr id="brow-${m.id}" data-loc="${m.location_id||''}">
     <td><div class="mn">${m.first_name} ${m.last_name}</div><div class="me" style="font-size:11px;color:var(--ink3)">${m.email}</div></td>
-    <td><span class="badge b-${m.level_tier}">Lvl ${m.current_level} — ${m.level_name}</span></td>
+    <td><span class="badge b-${m.level_tier}">Lvl ${m.current_level} — ${m.level_name}${m.level_milestone==='2min_rotation'?' · 2-min rotation':''}</span>
     <td>
       <select id="out-${m.id}" style="min-width:130px;padding:5px 6px;font-size:12px" onchange="toggleProgressField('${m.id}',this.value)">
         <option value="" ${!outcome?'selected':''}>— no result —</option>
         <option value="continue" ${outcome==='continue'?'selected':''}>Continue</option>
         <option value="progress" ${outcome==='progress'?'selected':''}>Progress</option>
-        <option value="l3_daemaek" ${outcome==='l3_daemaek'?'selected':''}>L3: Daemaek rotation ✓</option>
-        <option value="l3_2min" ${outcome==='l3_2min'?'selected':''}>L3: 2-min rotation ✓</option>
-        <option value="l4_sojucheon" ${outcome==='l4_sojucheon'?'selected':''}>L4: Sojucheon rotation ✓</option>
-        <option value="l4_2min" ${outcome==='l4_2min'?'selected':''}>L4: 2-min rotation ✓</option>
+        <option value="l3_daemaek" ${outcome==='l3_daemaek'?'selected':''}>L3: Begin 2-min rotation</option>
+        <option value="l4_sojucheon" ${outcome==='l4_sojucheon'?'selected':''}>L4: Begin 2-min rotation</option>
         <option value="belly_massage" ${outcome==='belly_massage'?'selected':''}>Try Belly Massage</option>
         <option value="encouragement" ${outcome==='encouragement'?'selected':''}>Encouragement</option>
         <option value="schedule_oo1" ${outcome==='schedule_oo1'?'selected':''}>Schedule 1:1</option>
@@ -3731,8 +3771,16 @@ async function saveSession() {
     const flagUpdate = {};
     if (r.outcome === 'encouragement') flagUpdate.encourage_emails = true;
     if (r.outcome === 'schedule_oo1') flagUpdate.flag_one_on_one = true;
-    if (r.outcome === 'level_up') flagUpdate.current_level = r.level_assessed + 1;
-    if (r.outcome === 'level_down' && r.level_assessed > 1) flagUpdate.current_level = r.level_assessed - 1;
+    if (r.outcome === 'level_up') {
+      flagUpdate.current_level = r.level_assessed + 1;
+      flagUpdate.level_milestone = null; // clear milestone on level up
+    }
+    if (r.outcome === 'level_down' && r.level_assessed > 1) {
+      flagUpdate.current_level = r.level_assessed - 1;
+      flagUpdate.level_milestone = null;
+    }
+    if (r.outcome === 'l3_daemaek') flagUpdate.level_milestone = '2min_rotation';
+    if (r.outcome === 'l4_sojucheon') flagUpdate.level_milestone = '2min_rotation';
     if (Object.keys(flagUpdate).length) {
       await SB.from('members').update(flagUpdate).eq('id', r.member_id);
     }
@@ -3922,6 +3970,7 @@ async function reopenSession(id, date, time, conductorId) {
 
 async function deleteSession(id) {
   if (!confirm('Delete this session? All results will be removed.')) return;
+  await SB.from('level_up_events').delete().eq('session_id', id);
   await SB.from('checkup_results').delete().eq('session_id', id);
   await SB.from('communications').delete().eq('session_id', id);
   const { error } = await SB.from('checkup_sessions').delete().eq('id', id);
@@ -5188,20 +5237,22 @@ Your Seokmun Hoheup Practice checkup has been completed.
 Checkup Date: ${sessionDate}
 Assessed by: Grand Master ${conductorName}
 Level: 3 — Daemaek
-
-Grand Master ${conductorName} has confirmed that you have completed the Daemaek rotation. This is a meaningful milestone in your Level 3 practice — the energy is moving along the path of the lower Danjeon Yeouiju Daemaek.
 ${notesBlock}
-WHAT THIS MEANS
+Grand Master ${conductorName} has confirmed that you have completed the Daemaek rotation. Well done — this is a significant step in your Level 3 practice.
+
+YOUR NEXT PRACTICE STEP
 ────────────────────────────────────────
-You have established the Daemaek rotation. The next step is to sustain this rotation for a full 2 minutes. Continue your daily practice with this as your focus.
+You are now beginning the Level 3, 2-minute rotation practice. Your goal is to complete the Daemaek rotation within 2 minutes.
 
-LEVEL 3 SHIMBEOP
+UPDATED SHIMBEOP — LEVEL 3, 2-MINUTE ROTATION
 ────────────────────────────────────────
-"I move Ki (energy) along the path of the lower Danjeon Yeouiju Daemaek."
+"Rotate Daemaek in 2 minutes."
 
-Recite mentally, silently with a fervent heart, 3 times at the start of Breathing Practice. Focus your consciousness on the Danjeon centered at the Seokmun, and sustain the rotation throughout your practice.
+Recite this mentally, silently with a fervent heart, 3 times at the very beginning of your main meditation session. Then focus your consciousness on rotating the Daemaek within 2 minutes.
 
-Please reach out if you have any questions about your practice.
+Grand Master will assess the 2-minute rotation at your next checkup. Please continue your daily practice with this as your focus.
+
+Please reach out if you have any questions.
 
 Warm regards,
 ${org}
@@ -5220,22 +5271,12 @@ Your Seokmun Hoheup Practice checkup has been completed.
 Checkup Date: ${sessionDate}
 Assessed by: Grand Master ${conductorName}
 Level: 3 — Daemaek
-
-Congratulations — Grand Master ${conductorName} has confirmed that you have completed the 2-minute Daemaek rotation. This is the final review milestone of Level 3.
 ${notesBlock}
-WHAT THIS MEANS
-────────────────────────────────────────
-You have sustained the Daemaek rotation for a full 2 minutes. This completes your Level 3 review. Grand Master will assess your readiness to advance to Level 4 at your next checkup.
+Congratulations — Grand Master ${conductorName} has confirmed that you have completed the Daemaek rotation within 2 minutes. This completes your Level 3 practice.
 
-Continue your daily practice maintaining the full 2-minute rotation. This sustained effort is what prepares the Ki to move along the Conception and Governor meridians in Level 4.
+You are now ready to advance to Level 4. Grand Master will confirm your advancement at the appropriate time.
 
-LEVEL 3 SHIMBEOP
-────────────────────────────────────────
-"I move Ki (energy) along the path of the lower Danjeon Yeouiju Daemaek."
-
-Recite mentally, silently with a fervent heart, 3 times at the start of Breathing Practice.
-
-Please reach out if you have any questions.
+Continue your daily practice. Well done on this achievement.
 
 Warm regards,
 ${org}
