@@ -773,7 +773,7 @@ I have read and understood this waiver and agree freely and voluntarily.</div>
     <div class="bulk-wrap">
       <table class="btbl" id="bulk-tbl">
         <thead><tr>
-          <th>Member</th><th>Level</th><th>Outcome</th><th>In Person</th>
+          <th>Member</th><th>Level</th><th>Outcome</th><th>In Person</th><th>Belly Massage</th>
           <th>Result Notes (emailed)</th><th>Internal Notes</th>
         </tr></thead>
         <tbody id="bulk-tbody"></tbody>
@@ -3646,6 +3646,9 @@ function memberRowHTML(m, existing) {
     <td style="text-align:center">
       <input type="checkbox" id="inp-${m.id}" ${inPerson?'checked':''} style="transform:scale(1.3);accent-color:var(--gold)">
     </td>
+    <td style="text-align:center">
+      <input type="checkbox" id="belly-${m.id}" style="transform:scale(1.3);accent-color:var(--rust)" title="Send belly massage info with this checkup email">
+    </td>
     <td><textarea id="rn-${m.id}" rows="2" style="width:100%;min-width:140px">${resultNotes}</textarea></td>
     <td><textarea id="in-${m.id}" rows="2" style="width:100%;min-width:120px">${internalNotes}</textarea></td>
   </tr>`;
@@ -3745,6 +3748,7 @@ async function saveSession() {
       return sel || null;
     })() : null;
     const inPerson = document.getElementById('inp-'+m.id)?.checked || false;
+    const includeBellyMassage = document.getElementById('belly-'+m.id)?.checked || false;
     const resultNotes = document.getElementById('rn-'+m.id)?.value?.trim() || null;
     const internalNotes = document.getElementById('in-'+m.id)?.value?.trim() || null;
 
@@ -3757,6 +3761,7 @@ async function saveSession() {
       acu_point: acuPoint,
       attended: true,
       in_person: inPerson,
+      include_belly_massage: includeBellyMassage,
       result_notes: resultNotes,
       internal_notes: internalNotes,
       entered_by: currentStaff?.id
@@ -3843,6 +3848,39 @@ async function saveSession() {
       subject = `Your Checkup Result — ${fmtDate(sessionDate)} · ${org}`;
       body = generateCheckupResultEmail(m, r, levelData, conductorName, fmtDate(sessionDate), org);
       commType = 'checkup_result';
+    }
+
+    // Append belly massage info if checkbox was checked (and not already a belly massage email)
+    if (r.include_belly_massage && r.outcome !== 'belly_massage') {
+      body = body.replace(/\n────────────────────────────────────────\n© 2025.*$/s, '') +
+        `\n\n────────────────────────────────────────
+BELLY MASSAGE RECOMMENDATION FROM GRAND MASTER ${conductorName.toUpperCase()}
+────────────────────────────────────────
+Once the belly is relaxed and habits let down, the breathing will go better and practice will be more enjoyable. The breathing reaching the lower Danjeon is crucial.
+
+Use a soccer ball to self-massage. Also try a big bowl with a towel on top.
+
+COMPLETE ORDER OF PRACTICE
+1. Soccer ball or belly massage (optional)
+2. Warm-up exercises
+3. Haenggong (the 12 postures)
+4. Personal Haenggong (optional)
+5. Belly massage (optional)
+6. Main breathing
+7. Recovery exercises
+
+HOW TO DO BELLY MASSAGE
+· Rub your hands together to warm them. Place them on the diaphragm.
+· Starting at the sternum, rub with the thumb pad side to side. Breathe naturally.
+· Cup your right hand on top of your left and massage side to side in a rolling motion starting just right of the navel.
+· Place your palm on the navel and draw clockwise circles.
+· Place your left palm under the diaphragm and your right palm over the navel. Hold and breathe.
+
+Please try this before your next practice session and let us know how it goes.
+
+────────────────────────────────────────
+© 2025 Hanjo. All rights reserved.
+SEOKMUN™ and SEOKMUN HOHEUP™ are trademarks of Hanjo.`;
     }
 
     await SB.from('communications').insert({
