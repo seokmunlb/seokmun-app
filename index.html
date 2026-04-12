@@ -2373,9 +2373,13 @@ async function loadPaymentMethods() {
 async function loadOrgConfig() {
   const { data } = await SB.from('config').select('*').single();
   orgConfig = data || {};
-  // Show global free banner if on
   document.getElementById('fees-global-banner').style.display =
     orgConfig.fees_globally_free ? 'block' : 'none';
+
+  // Load custom email templates into cache
+  const { data: templates } = await SB.from('email_templates').select('*');
+  emailTemplateCache = {};
+  (templates||[]).forEach(t => emailTemplateCache[t.key] = t);
 }
 
 function populateLocationSelects() {
@@ -3887,17 +3891,20 @@ async function saveSession() {
   }
 
   emailOutput.innerHTML = `
-    <div class="alert a-s" style="margin-bottom:16px">✓ Session saved. ${emailsToShow.length} email${emailsToShow.length!==1?'s':''} generated — copy and send each one below.</div>
-    ${emailsToShow.map(e => `
-      <div style="margin-bottom:16px">
+    <div class="alert a-s" style="margin-bottom:16px">✓ Session saved. ${emailsToShow.length} email${emailsToShow.length!==1?'s':''} generated — click inside each email text box, select all (Ctrl+A), then copy (Ctrl+C) and paste into Yahoo Mail.</div>
+    ${emailsToShow.map((e, i) => `
+      <div style="margin-bottom:20px">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
           <strong style="font-size:13px">${e.m.first_name} ${e.m.last_name}</strong>
-          <button class="btn btn-sm" onclick="copyText(\`${escJs(e.body)}\`)">Copy</button>
+          <div style="display:flex;gap:6px">
+            <button class="btn btn-sm" onclick="selectEmailText('email-ta-${i}')">Select All</button>
+            <button class="btn btn-sm btn-p" onclick="copyEmailText('email-ta-${i}',this)">Copy</button>
+          </div>
         </div>
-        <div class="ep">
+        <div class="ep" style="margin-bottom:6px">
           <div class="em"><strong>To:</strong> ${e.m.email} &nbsp;|&nbsp; <strong>Subject:</strong> ${escHtml(e.subject)}</div>
-          <div class="ebody" style="max-height:280px">${e.body.includes('<img') ? e.body : escHtml(e.body)}</div>
         </div>
+        <textarea id="email-ta-${i}" rows="8" style="width:100%;font-size:12px;font-family:monospace;padding:8px;border:1px solid var(--bg3);border-radius:var(--r);resize:vertical">${escHtml(e.body)}</textarea>
       </div>`).join('')}`;
 
   await updateBadges();
@@ -4789,8 +4796,516 @@ async function saveLevel() {
 // ══════════════════════════════════════════════════════════
 async function loadTemplates() {
   if (!SB) return;
-  document.getElementById('tpl-list').innerHTML = '<div style="padding:20px;color:var(--ink3)">Email templates are stored in the database. To edit them, use Supabase Studio → Table editor → email_templates, or ask your admin to add a template editor UI in a future update.</div>';
+  const filter = document.getElementById('tpl-filter').value;
+
+  // Define all built-in templates
+  const builtInTemplates = getBuiltInTemplates();
+
+  // Load any custom overrides from database
+  const { data: customTemplates } = await SB.from('email_templates').select('*');
+  const customMap = {};
+  (customTemplates||[]).forEach(t => customMap[t.key] = t);
+
+  // Populate category filter
+  const categories = [...new Set(builtInTemplates.map(t => t.category))];
+  const filterEl = document.getElementById('tpl-filter');
+  filterEl.innerHTML = '<option value="">All templates</option>' +
+    categories.map(c => `<option value="${c}" ${filter===c?'selected':''}>${c}</option>`).join('');
+
+  const filtered = filter ? builtInTemplates.filter(t => t.category === filter) : builtInTemplates;
+
+  const container = document.getElementById('tpl-list');
+  container.innerHTML = filtered.map(t => {
+    const custom = customMap[t.key];
+    const isEdited = !!custom;
+    const currentBody = custom?.body || t.body;
+    const currentSubject = custom?.subject || t.subject || '';
+    return `
+    <div class="card" style="margin-bottom:14px">
+      <div class="ch">
+        <span class="ct">${t.name} ${isEdited?'<span style="font-size:11px;color:var(--gold);font-weight:400">● customized</span>':''}</span>
+        <div style="display:flex;gap:6px">
+          ${isEdited?`<button class="btn btn-sm" onclick="resetTemplate('${t.key}')">Reset to default</button>`:''}
+          <button class="btn btn-sm btn-p" onclick="saveTemplate('${t.key}')">Save</button>
+        </div>
+      </div>
+      <div class="cb">
+        <div style="font-size:11px;color:var(--ink3);margin-bottom:8px">
+          Placeholders: <code style="background:var(--bg2);padding:2px 4px;border-radius:3px">${t.placeholders}</code>
+        </div>
+        ${t.subject !== undefined ? `<div class="fg" style="margin-bottom:8px">
+          <label>Subject line</label>
+          <input id="tpl-subj-${t.key}" value="${escHtml(currentSubject)}" style="font-size:13px">
+        </div>` : ''}
+        <div class="fg">
+          <label>Email body</label>
+          <textarea id="tpl-body-${t.key}" rows="12" style="font-family:monospace;font-size:12px;line-height:1.5">${escHtml(currentBody)}</textarea>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
 }
+
+function getBuiltInTemplates() {
+  const org = orgConfig?.org_subtitle || 'Seokmun Hoheup Practice';
+  return [
+    // ── WELCOME ──
+    { key: 'welcome_group1', category: 'Welcome', name: 'Welcome — Group 1', subject: `Welcome to ${org} — Your Getting Started Guide`,
+      placeholders: '{first_name}, {org}, {level_name}, {hg_sheet_url}, {chair_sheet_url}, {app_url}, {reg_url_singleday}, {reg_url_membership}, {roch_schedule}, {stpaul_schedule}',
+      body: `Dear {first_name},
+
+Welcome to {org}! We are delighted to have you with us.
+
+You have enrolled in our 3-Month Free Trial. At the end of the trial, your membership continues as a regular membership if you choose to continue.
+
+INSTALL THE BREATHING APP
+Download the app to access guided practice sessions at any time.
+{app_url}
+
+YOUR LEVEL 1 POSTURE SHEET
+Review and practice the Level 1 postures before your first class.
+{hg_sheet_url}
+
+REGISTRATION FORMS
+Single Day Practice:
+{reg_url_singleday}
+
+Membership Registration (3-Month / Full):
+{reg_url_membership}
+
+CLASS SCHEDULE — Rochester MN
+{roch_schedule}
+
+CLASS SCHEDULE — St Paul MN
+{stpaul_schedule}
+
+ABOUT CHECKUPS
+Regular checkups with the Master are an important part of your progress. We will be in touch with details about the next scheduled checkup and what to expect.
+
+Warm regards,
+{org}` },
+
+    { key: 'welcome_group2', category: 'Welcome', name: 'Welcome — Group 2', subject: `Welcome to ${org} — Your Getting Started Guide`,
+      placeholders: '{first_name}, {org}, {hg_sheet_url}, {app_url}, {reg_url_singleday}, {reg_url_membership}, {roch_schedule}, {stpaul_schedule}',
+      body: `Dear {first_name},
+
+Welcome to {org}. We are honoured to walk this path with you.
+
+You have enrolled in our 3-Month Free Trial. At the end of the trial period, your membership continues as a regular membership if you choose to go deeper.
+
+THE BREATHING APP
+This is your companion for daily practice. Each session opens a channel for prana — the life force carried on the breath — to move through you more freely.
+{app_url}
+
+LEVEL 1 HAENG GONG SHEET
+Your Level 1 Haeng Gong sheet shows the 12 postures for your practice. Each posture is held for 2 minutes.
+{hg_sheet_url}
+
+REGISTRATION FORMS
+Single Day Practice:
+{reg_url_singleday}
+
+Membership Registration (3-Month / Full):
+{reg_url_membership}
+
+CLASS SCHEDULE — Rochester MN
+{roch_schedule}
+
+CLASS SCHEDULE — St Paul MN
+{stpaul_schedule}
+
+ABOUT CHECKUPS
+Checkups with the Master are moments of attunement — an opportunity to receive direct guidance and to have your practice witnessed. We will be in touch with details about the next scheduled checkup.
+
+With warmth and welcome,
+{org}` },
+
+    // ── CHECKUP RESULTS ──
+    { key: 'checkup_continue', category: 'Checkup Results', name: 'Checkup — Continue', subject: 'Your Checkup Result — {date} · {org}',
+      placeholders: '{first_name}, {org}, {date}, {conductor}, {level_name}, {result_notes}',
+      body: `Dear {first_name},
+
+Your Seokmun Hoheup Practice checkup has been completed.
+
+Checkup Date: {date}
+Assessed by: {conductor}
+Level: {level_name}
+
+All remain the same.
+{result_notes}
+
+Warm regards,
+{org}` },
+
+    { key: 'checkup_progress', category: 'Checkup Results', name: 'Checkup — Progress', subject: 'Your Checkup Result — {date} · {org}',
+      placeholders: '{first_name}, {org}, {date}, {conductor}, {level_name}, {progress_pct}, {acu_point}, {result_notes}',
+      body: `Dear {first_name},
+
+Your Seokmun Hoheup Practice checkup has been completed.
+
+Checkup Date: {date}
+Assessed by: {conductor}
+Level: {level_name} — {progress_pct}%
+Focus Point: {acu_point}
+{result_notes}
+
+Warm regards,
+{org}` },
+
+    { key: 'checkup_encouragement', category: 'Checkup Results', name: 'Checkup — Encouragement', subject: 'Your Checkup Result — {date} · {org}',
+      placeholders: '{first_name}, {org}, {date}, {conductor}, {level_name}, {result_notes}',
+      body: `Dear {first_name},
+
+Your Seokmun Hoheup Practice checkup has been completed.
+
+Checkup Date: {date}
+Assessed by: {conductor}
+Level: {level_name}
+
+Your dedication to the practice is seen and appreciated. Each session, however it feels, is meaningful. Please continue — you are on the right path.
+{result_notes}
+
+We will be in touch with some personal encouragement and support.
+
+Warm regards,
+{org}` },
+
+    { key: 'checkup_schedule_oo1', category: 'Checkup Results', name: 'Checkup — Schedule 1:1', subject: 'Your Checkup Result — {date} · {org}',
+      placeholders: '{first_name}, {org}, {date}, {conductor}, {level_name}, {result_notes}',
+      body: `Dear {first_name},
+
+Your Seokmun Hoheup Practice checkup has been completed.
+
+Checkup Date: {date}
+Assessed by: {conductor}
+Level: {level_name}
+
+A one-on-one session with the Master has been recommended. We will be in touch to schedule a time that works for you.
+{result_notes}
+
+Warm regards,
+{org}` },
+
+    { key: 'checkup_level_down', category: 'Checkup Results', name: 'Checkup — Level Down', subject: 'Your Checkup Result — {date} · {org}',
+      placeholders: '{first_name}, {org}, {date}, {conductor}, {down_level_name}, {shimbeop}, {sheet_url}, {result_notes}',
+      body: `Dear {first_name},
+
+Your Seokmun Hoheup Practice checkup has been completed.
+
+Checkup Date: {date}
+Assessed by: {conductor}
+
+After careful assessment, {conductor} has guided you to return to {down_level_name} to deepen your foundation. This is a meaningful part of the practice — returning to an earlier level allows you to strengthen and refine what is already there, creating a more stable ground for everything that follows. Please receive this with an open heart.
+
+RETURNING TO: {down_level_name}
+
+SHIMBEOP
+{shimbeop}
+
+Recite mentally, silently with a fervent heart, 3 times at the start of Breathing Practice.
+
+HAENGGONG
+{sheet_url}
+
+Please let us know if you would like to schedule a one-on-one session.
+
+Warm regards,
+{org}` },
+
+    // ── MILESTONES ──
+    { key: 'l3_daemaek', category: 'Milestones', name: 'L3: Begin 2-min rotation', subject: 'Level 3 Milestone — Daemaek Rotation Complete · {org}',
+      placeholders: '{first_name}, {org}, {date}, {conductor}, {result_notes}',
+      body: `Dear {first_name},
+
+Your Seokmun Hoheup Practice checkup has been completed.
+
+Checkup Date: {date}
+Assessed by: Grand Master {conductor}
+Level: 3 — Daemaek
+{result_notes}
+Grand Master {conductor} has confirmed that you have completed the Daemaek rotation. Well done — this is a significant step in your Level 3 practice.
+
+YOUR NEXT PRACTICE STEP
+────────────────────────────────────────
+You are now beginning the Level 3, 2-minute rotation practice. Your goal is to complete the Daemaek rotation within 2 minutes.
+
+UPDATED SHIMBEOP — LEVEL 3, 2-MINUTE ROTATION
+────────────────────────────────────────
+"Rotate Daemaek in 2 minutes."
+
+Recite this mentally, silently with a fervent heart, 3 times at the very beginning of your main meditation session. Then focus your consciousness on rotating the Daemaek within 2 minutes.
+
+Grand Master will assess the 2-minute rotation at your next checkup. Please continue your daily practice with this as your focus.
+
+Warm regards,
+{org}` },
+
+    { key: 'l4_sojucheon', category: 'Milestones', name: 'L4: Begin 2-min rotation', subject: 'Level 4 Milestone — Sojucheon Rotation Complete · {org}',
+      placeholders: '{first_name}, {org}, {date}, {conductor}, {result_notes}',
+      body: `Dear {first_name},
+
+Your Seokmun Hoheup Practice checkup has been completed.
+
+Checkup Date: {date}
+Assessed by: Grand Master {conductor}
+Level: 4 — Sojucheon
+{result_notes}
+Grand Master {conductor} has confirmed that Ki is moving along the path of the Conception and Governor meridians. This is a meaningful milestone in your Level 4 practice.
+
+YOUR NEXT PRACTICE STEP
+────────────────────────────────────────
+You are now beginning the Level 4, 2-minute rotation practice. Your goal is to sustain this rotation for a full 2 minutes.
+
+UPDATED SHIMBEOP — LEVEL 4, 2-MINUTE ROTATION
+────────────────────────────────────────
+"Rotate Sojucheon in 2 minutes."
+
+Recite this mentally, silently with a fervent heart, 3 times at the very beginning of your main meditation session.
+
+Warm regards,
+{org}` },
+
+    { key: 'belly_massage', category: 'Milestones', name: 'Belly Massage Recommendation', subject: 'Your Practice Tip — Belly Massage · {org}',
+      placeholders: '{first_name}, {org}, {date}, {conductor}, {result_notes}',
+      body: `Dear {first_name},
+
+Your Seokmun Hoheup Practice checkup has been completed.
+
+Checkup Date: {date}
+Assessed by: Grand Master {conductor}
+{result_notes}
+Grand Master {conductor} has recommended that you try belly massage to help your breath reach the lower Danjeon.
+
+BELLY MASSAGE — GRAND MASTER'S GUIDANCE
+────────────────────────────────────────
+Once the belly is relaxed and habits let down, the breathing will go better and practice will be more enjoyable. The breathing reaching the lower Danjeon is crucial.
+
+Use a soccer ball to self-massage. Also try a big bowl with a towel on top.
+
+COMPLETE ORDER OF PRACTICE
+────────────────────────────────────────
+1. Soccer ball or belly massage (optional)
+2. Warm-up exercises
+3. Haenggong (the 12 postures)
+4. Personal Haenggong (optional)
+5. Belly massage (optional)
+6. Main breathing
+7. Recovery exercises
+
+HOW TO DO BELLY MASSAGE
+────────────────────────────────────────
+· Rub your hands together to warm them. Place them on the diaphragm.
+· Starting at the sternum, rub with the thumb pad side to side. Breathe naturally.
+· Cup your right hand on top of your left and massage side to side in a rolling motion.
+· Place your palm on the navel and draw clockwise circles.
+· Place your left palm under the diaphragm and your right palm over the navel. Hold and breathe.
+
+Warm regards,
+{org}` },
+
+    // ── ABSENT ──
+    { key: 'absent_standard', category: 'Absent', name: 'Absent — Standard', subject: 'We missed you — {date} · {org}',
+      placeholders: '{first_name}, {org}, {date}, {location_name}',
+      body: `Dear {first_name},
+
+We missed you at practice on {date}.
+
+We hope everything is well. Please remember that consistent practice supports your progress — even a short session at home can help maintain the energy you have cultivated.
+
+We look forward to seeing you at the next class.
+
+Warm regards,
+{org}` },
+
+    { key: 'absent_encourage', category: 'Absent', name: 'Absent — Encouragement', subject: 'We missed you — {date} · {org}',
+      placeholders: '{first_name}, {org}, {date}, {location_name}',
+      body: `Dear {first_name},
+
+We missed you at practice on {date} and wanted to reach out personally.
+
+We understand that life can be demanding, and we want you to know that the practice is always here for you — at whatever pace feels right. Each time you return to the mat, you are nurturing something real and valuable.
+
+We look forward to seeing you soon. Please don't hesitate to reach out if there is anything we can support you with.
+
+With warmth,
+{org}` },
+
+    // ── LEVEL UP ──
+    { key: 'levelup_2', category: 'Level Up', name: 'Level Up — Level 2', subject: 'Congratulations — You have advanced to Level 2 · {org}',
+      placeholders: '{first_name}, {org}, {date}, {conductor}, {sheet_url}',
+      body: `Dear {first_name},
+
+Welcome to Level 2 — and well done on completing Level 1, Washik — Forming the Danjeon!
+
+Grand Master {conductor} revealed your leveling up at the {date} checkup.
+
+Now in Level 2, you will learn how to fill the Danjeon (reservoir) with Jinki (energy).
+
+LEVEL 2 — JWASHIK: KEY POINTS
+────────────────────────────────────────
+· In Level 2, you accumulate Jinki (genuine Ki) into the lower Danjeon to further stabilize the Danjeon point.
+
+· You now take a seated posture for Breathing Practice. This upright posture is more efficient for accumulating Ki.
+
+· The Level 2 Shimbeop is the same as Level 1:
+  "I gather the Ki (energy) from between heaven and earth into the Seokmun at the lower Danjeon through breathing."
+  Repeat 3 times internally while focusing consciousness on the Danjeon centered at the Seokmun, and breathe naturally.
+
+· Monitor the body for tension and release it as you notice it.
+
+· Level 2 Haenggong is challenging. Be kind to yourself and take your time.
+
+LEVEL 2 MATERIALS
+────────────────────────────────────────
+Level 2 Haenggong Sheet:
+{sheet_url}
+
+Warm regards,
+{org}` },
+
+    { key: 'levelup_3', category: 'Level Up', name: 'Level Up — Level 3', subject: 'Congratulations — You have advanced to Level 3 · {org}',
+      placeholders: '{first_name}, {org}, {date}, {conductor}, {sheet_url}',
+      body: `Dear {first_name},
+
+Welcome to Level 3!
+
+Grand Master {conductor} has advanced you to Level 3 at the {date} checkup.
+
+Attached is a detailed document to use in practice, and a video showing Level 3 postures.
+
+LEVEL 3 SHIMBEOP
+────────────────────────────────────────
+"I move Ki (energy) along the path of the lower Danjeon Yeouiju Daemaek."
+
+Recite mentally, silently with a fervent heart, 3 times at the start of Breathing Practice. Focus your consciousness on the Danjeon centered at the Seokmun.
+
+LEVEL 3 MATERIALS
+────────────────────────────────────────
+{sheet_url}
+
+Warm regards,
+{org}` },
+
+    { key: 'levelup_4', category: 'Level Up', name: 'Level Up — Level 4', subject: 'Congratulations — You have advanced to Level 4 · {org}',
+      placeholders: '{first_name}, {org}, {date}, {conductor}, {sheet_url}',
+      body: `Dear {first_name},
+
+Welcome to Level 4 — Sojucheon!
+
+Grand Master {conductor} has advanced you to Level 4 at the {date} checkup.
+
+Sojucheon is the awakening of the microcosm within the body.
+
+Haenggong: Hwajinbeop — "When one illuminates oneself like fire and burns away one's inner dimness, the path to finding One's Essential Self will become clear."
+
+LEVEL 4 SHIMBEOP
+────────────────────────────────────────
+"I move Ki along the path of the Conception and Governor meridians."
+
+Recite mentally, silently with a fervent heart, 3 times at the start of Breathing Practice.
+
+REVIEW ORDER
+────────────────────────────────────────
+· Level 1–2 Shimbeop — "Accumulate Energy" until accumulation is full
+· Level 3 Shimbeop — "Rotate Daemaek" until it fully rotates
+· Level 4 Shimbeop — "Rotate Sojucheon" until Ki moves along the Conception and Governor meridians
+
+LEVEL 4 MATERIALS
+────────────────────────────────────────
+{sheet_url}
+
+Warm regards,
+{org}` },
+
+    { key: 'levelup_generic', category: 'Level Up', name: 'Level Up — Levels 5–15 (default)', subject: 'Congratulations — You have advanced · {org}',
+      placeholders: '{first_name}, {org}, {date}, {conductor}, {level_name}, {level_number}, {sheet_url}',
+      body: `Dear {first_name},
+
+Congratulations on advancing to {level_name}!
+
+Grand Master {conductor} has advanced you at the {date} checkup.
+
+Please review your practice materials for this level and continue with your daily practice.
+
+{sheet_url}
+
+Warm regards,
+{org}` },
+
+    // ── PROSPECTIVE ──
+    { key: 'intro_invite', category: 'Prospective', name: 'Intro Session Invitation', subject: 'Invitation: Introduction to the Seokmun Hoheup Program (Free)',
+      placeholders: '{first_name}, {org}, {staff_name}, {cal_link}, {meet_link}',
+      body: `Dear {first_name},
+
+Thank you for your interest in Seokmun Hoheup Practice!
+
+We would like to invite you to a free introductory session where you can learn about the practice, experience a brief demonstration, and ask any questions you may have.
+
+To schedule your intro session, please use this link:
+{cal_link}
+
+Our online class meets via Google Meet:
+{meet_link}
+
+We look forward to meeting you!
+
+Warm regards,
+{staff_name}
+{org}` },
+  ];
+}
+
+async function saveTemplate(key) {
+  const bodyEl = document.getElementById('tpl-body-' + key);
+  const subjEl = document.getElementById('tpl-subj-' + key);
+  if (!bodyEl) return;
+
+  const body = bodyEl.value.trim();
+  const subject = subjEl?.value.trim() || null;
+
+  const { error } = await SB.from('email_templates').upsert({
+    key, body, subject,
+    category: getBuiltInTemplates().find(t => t.key === key)?.category || 'Other',
+    name: getBuiltInTemplates().find(t => t.key === key)?.name || key,
+    placeholders: getBuiltInTemplates().find(t => t.key === key)?.placeholders || '',
+    updated_at: new Date().toISOString(),
+    updated_by: currentStaff?.id
+  }, { onConflict: 'key' });
+
+  if (error) { alert('Error saving: ' + error.message); return; }
+  alert('✓ Template saved.');
+  loadTemplates();
+}
+
+async function resetTemplate(key) {
+  if (!confirm('Reset this template to the built-in default? Your customizations will be lost.')) return;
+  await SB.from('email_templates').delete().eq('key', key);
+  alert('✓ Reset to default.');
+  loadTemplates();
+}
+
+// Helper to render a template with actual values
+function renderTemplate(templateKey, vars) {
+  const custom = emailTemplateCache?.[templateKey];
+  const builtin = getBuiltInTemplates().find(t => t.key === templateKey);
+  let body = custom?.body || builtin?.body || '';
+  let subject = custom?.subject || builtin?.subject || '';
+
+  // Replace all {placeholder} with actual values
+  Object.entries(vars).forEach(([k, v]) => {
+    const val = v != null ? String(v) : '';
+    body = body.replace(new RegExp(`\\{${k}\\}`, 'g'), val);
+    subject = subject.replace(new RegExp(`\\{${k}\\}`, 'g'), val);
+  });
+
+  // Clean up any unused placeholders
+  body = body.replace(/\{[a-z_]+\}/g, '');
+  subject = subject.replace(/\{[a-z_]+\}/g, '');
+
+  return { body, subject };
+}
+
+let emailTemplateCache = {};
 
 // ══════════════════════════════════════════════════════════
 //  ADMIN — LOCATIONS
@@ -6116,6 +6631,42 @@ async function runBulkImport() {
   preview.innerHTML = msg;
   loadMembers();
   updateBadges();
+}
+
+function selectEmailText(id) {
+  const ta = document.getElementById(id);
+  if (!ta) return;
+  ta.focus();
+  ta.select();
+}
+
+function copyEmailText(id, btn) {
+  const ta = document.getElementById(id);
+  if (!ta) return;
+  ta.focus();
+  ta.select();
+  
+  // Try clipboard API first
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(ta.value).then(() => {
+      const orig = btn.textContent;
+      btn.textContent = '✓ Copied!';
+      btn.style.background = 'var(--sage)';
+      setTimeout(() => { btn.textContent = orig; btn.style.background = ''; }, 2000);
+    }).catch(() => {
+      // Fallback: text is selected, tell user to press Ctrl+C
+      const orig = btn.textContent;
+      btn.textContent = 'Now press Ctrl+C';
+      btn.style.background = 'var(--gold)';
+      setTimeout(() => { btn.textContent = orig; btn.style.background = ''; }, 3000);
+    });
+  } else {
+    try { document.execCommand('copy'); } catch(e) {}
+    const orig = btn.textContent;
+    btn.textContent = 'Now press Ctrl+C';
+    btn.style.background = 'var(--gold)';
+    setTimeout(() => { btn.textContent = orig; btn.style.background = ''; }, 3000);
+  }
 }
 
 function copyText(text) {
