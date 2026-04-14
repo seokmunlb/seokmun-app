@@ -275,6 +275,7 @@ textarea{resize:vertical;min-height:68px}
     <div class="ni" onclick="nav('comms')" data-p="comms"><span class="ni-ic">◫</span><span>Comms Log</span></div>
     <div class="ns">Fees</div>
     <div class="ni" onclick="nav('fees')" data-p="fees"><span class="ni-ic">$</span><span>Fee Overview</span><span class="nbadge" id="nb-fee">0</span></div>
+    <div class="ni" onclick="nav('reports')" data-p="reports"><span class="ni-ic">◧</span><span>Reports</span></div>
     <div class="ni" onclick="nav('payments')" data-p="payments"><span class="ni-ic">✓</span><span>Record Payment</span></div>
     <div class="ni" onclick="nav('fee-report')" data-p="fee-report"><span class="ni-ic">≡</span><span>Fee Report</span></div>
     <div class="ns">Admin</div>
@@ -1972,6 +1973,78 @@ I have read and understood this waiver and agree freely and voluntarily.</div>
 </div>
 
 <!-- ══ FEES OVERVIEW ══ -->
+<div id="page-reports" class="page">
+  <div class="ph"><div><div class="pt">Reports</div><div class="ps">Member lists and data exports</div></div></div>
+
+  <div class="g2">
+    <!-- Trial Members -->
+    <div class="card">
+      <div class="ch"><span class="ct">Trial Members</span>
+        <button class="btn btn-sm" onclick="exportCSV('trial-tbody', ['Name','Email','Join Date','Trial End Date'])">Export CSV</button>
+      </div>
+      <div class="cb">
+        <button class="btn btn-p" style="margin-bottom:12px" onclick="loadTrialReport()">Load Trial Members</button>
+        <div style="overflow-x:auto">
+          <table class="tbl" id="trial-tbl" style="display:none">
+            <thead><tr><th>Name</th><th>Email</th><th>Join Date</th><th>Trial End Date</th><th>Days Left</th></tr></thead>
+            <tbody id="trial-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Members by Level -->
+    <div class="card">
+      <div class="ch"><span class="ct">Members by Level</span>
+        <button class="btn btn-sm" onclick="exportCSV('level-tbody', ['Name','Email','Level','Location','Status'])">Export CSV</button>
+      </div>
+      <div class="cb">
+        <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+          <select id="rpt-level" style="padding:7px 10px;font-size:13px;border:1px solid var(--bg3);border-radius:var(--r)">
+            <option value="">All levels</option>
+            ${Array.from({length:15},(_,i)=>`<option value="${i+1}">Level ${i+1}</option>`).join('')}
+          </select>
+          <select id="rpt-status" style="padding:7px 10px;font-size:13px;border:1px solid var(--bg3);border-radius:var(--r)">
+            <option value="">All statuses</option>
+            <option value="active">Active</option>
+            <option value="trial">Trial</option>
+            <option value="hold">On Hold</option>
+            <option value="inactive">Inactive</option>
+          </select>
+          <button class="btn btn-p" onclick="loadLevelReport()">Load</button>
+        </div>
+        <div id="level-report-emails" style="display:none;margin-bottom:10px;padding:8px 12px;background:var(--bg2);border-radius:var(--r);font-size:12px">
+          <strong>Email addresses:</strong><br>
+          <span id="level-report-email-list" style="word-break:break-all"></span>
+          <button class="btn btn-sm" style="margin-top:6px" onclick="copyText(document.getElementById('level-report-email-list').textContent)">Copy all emails</button>
+        </div>
+        <div style="overflow-x:auto">
+          <table class="tbl" id="level-tbl" style="display:none">
+            <thead><tr><th>Name</th><th>Email</th><th>Level</th><th>Location</th><th>Status</th></tr></thead>
+            <tbody id="level-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- All Active Members -->
+  <div class="card" style="margin-top:14px">
+    <div class="ch"><span class="ct">All Active & Trial Members</span>
+      <button class="btn btn-sm" onclick="exportCSV('all-members-tbody', ['Name','Email','Level','Location','Status','Join Date'])">Export CSV</button>
+    </div>
+    <div class="cb">
+      <button class="btn btn-p" style="margin-bottom:12px" onclick="loadAllMembersReport()">Load All Members</button>
+      <div style="overflow-x:auto">
+        <table class="tbl" id="all-members-tbl" style="display:none">
+          <thead><tr><th>Name</th><th>Email</th><th>Level</th><th>Location</th><th>Status</th><th>Join Date</th></tr></thead>
+          <tbody id="all-members-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div id="page-fees" class="page">
   <div class="ph">
     <div><div class="pt">Fee Overview</div><div class="ps">Voluntary sliding scale — fees are always optional and can be globally waived</div></div>
@@ -2460,6 +2533,7 @@ function nav(page) {
     broadcast: () => {},
     comms: loadCommsLog,
     fees: loadFeeOverview,
+    reports: () => {},
     payments: loadPaymentPageData,
     'fee-report': loadFeeReport,
     'levels-admin': loadLevelsAdmin,
@@ -6705,6 +6779,114 @@ function copyEmailText(id, btn) {
     btn.style.background = 'var(--gold)';
     setTimeout(() => { btn.textContent = orig; btn.style.background = ''; }, 3000);
   }
+}
+
+// ══════════════════════════════════════════════════════════
+//  REPORTS
+// ══════════════════════════════════════════════════════════
+async function loadTrialReport() {
+  if (!SB) return;
+  const { data } = await SB.from('v_members')
+    .select('first_name,last_name,email,join_date,trial_end_date')
+    .eq('status','trial')
+    .order('trial_end_date');
+
+  const tbody = document.getElementById('trial-tbody');
+  const tbl = document.getElementById('trial-tbl');
+  const today = new Date();
+
+  tbody.innerHTML = (data||[]).map(m => {
+    const endDate = m.trial_end_date ? new Date(m.trial_end_date) : null;
+    const daysLeft = endDate ? Math.ceil((endDate - today) / (1000*60*60*24)) : '—';
+    const daysColor = typeof daysLeft === 'number' && daysLeft <= 14 ? 'color:var(--rust)' : '';
+    return `<tr>
+      <td>${m.first_name} ${m.last_name}</td>
+      <td style="font-size:12px">${m.email||'—'}</td>
+      <td>${fmtDate(m.join_date)}</td>
+      <td>${fmtDate(m.trial_end_date)}</td>
+      <td style="${daysColor};font-weight:500">${typeof daysLeft === 'number' ? daysLeft + ' days' : '—'}</td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="5" class="empty">No trial members found.</td></tr>';
+
+  tbl.style.display = data?.length ? '' : 'none';
+  if (!data?.length) tbody.innerHTML = '<tr><td colspan="5" class="empty">No trial members found.</td></tr>';
+  tbl.style.display = '';
+}
+
+async function loadLevelReport() {
+  if (!SB) return;
+  const level = document.getElementById('rpt-level').value;
+  const status = document.getElementById('rpt-status').value;
+
+  let qb = SB.from('v_members')
+    .select('first_name,last_name,email,current_level,level_name,location_name,status')
+    .order('current_level').order('last_name');
+
+  if (level) qb = qb.eq('current_level', parseInt(level));
+  if (status) qb = qb.eq('status', status);
+  else qb = qb.in('status', ['active','trial','hold']);
+
+  const { data } = await qb;
+
+  const tbody = document.getElementById('level-tbody');
+  const tbl = document.getElementById('level-tbl');
+  const emailDiv = document.getElementById('level-report-emails');
+  const emailList = document.getElementById('level-report-email-list');
+
+  tbody.innerHTML = (data||[]).map(m => `<tr>
+    <td>${m.first_name} ${m.last_name}</td>
+    <td style="font-size:12px">${m.email||'—'}</td>
+    <td>Lvl ${m.current_level} — ${m.level_name}</td>
+    <td style="font-size:12px">${m.location_name||'—'}</td>
+    <td>${m.status}</td>
+  </tr>`).join('') || '<tr><td colspan="5" class="empty">No members found.</td></tr>';
+
+  tbl.style.display = '';
+
+  // Show email list for easy copy
+  const emails = (data||[]).filter(m => m.email).map(m => m.email);
+  if (emails.length) {
+    emailList.textContent = emails.join(', ');
+    emailDiv.style.display = 'block';
+  } else {
+    emailDiv.style.display = 'none';
+  }
+}
+
+async function loadAllMembersReport() {
+  if (!SB) return;
+  const { data } = await SB.from('v_members')
+    .select('first_name,last_name,email,current_level,level_name,location_name,status,join_date')
+    .in('status',['active','trial'])
+    .order('last_name');
+
+  const tbody = document.getElementById('all-members-tbody');
+  const tbl = document.getElementById('all-members-tbl');
+
+  tbody.innerHTML = (data||[]).map(m => `<tr>
+    <td>${m.first_name} ${m.last_name}</td>
+    <td style="font-size:12px">${m.email||'—'}</td>
+    <td>Lvl ${m.current_level} — ${m.level_name}</td>
+    <td style="font-size:12px">${m.location_name||'—'}</td>
+    <td>${m.status}</td>
+    <td style="font-size:12px">${fmtDate(m.join_date)}</td>
+  </tr>`).join('') || '<tr><td colspan="6" class="empty">No members found.</td></tr>';
+
+  tbl.style.display = '';
+}
+
+function exportCSV(tbodyId, headers) {
+  const tbody = document.getElementById(tbodyId);
+  if (!tbody) return;
+  const rows = Array.from(tbody.querySelectorAll('tr')).map(tr =>
+    Array.from(tr.querySelectorAll('td')).map(td => `"${td.textContent.trim().replace(/"/g,'""')}"`)
+  );
+  const csv = [headers.map(h => `"${h}"`).join(','), ...rows.map(r => r.join(','))].join('\n');
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `seokmun-report-${todayLocal()}.csv`;
+  a.click();
 }
 
 function copyText(text) {
