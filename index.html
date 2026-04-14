@@ -6975,6 +6975,8 @@ async function loadMasterManagedReport() {
   } else {
     emailDiv.style.display = 'none';
   }
+}
+
 async function loadCheckupSessionList() {
   if (!SB) return;
   const { data } = await SB.from('checkup_sessions')
