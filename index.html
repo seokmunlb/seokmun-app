@@ -2093,14 +2093,12 @@ I have read and understood this waiver and agree freely and voluntarily.</div>
         </select>
         <select id="checkup-rpt-loc" style="padding:7px 10px;font-size:13px;border:1px solid var(--bg3);border-radius:var(--r)">
           <option value="">All locations</option>
-          <option value="online">Online</option>
-          <option value="assisi">Assisi Heights</option>
         </select>
         <button class="btn btn-p" onclick="loadCheckupReport()">Load</button>
       </div>
       <div style="overflow-x:auto">
         <table class="tbl" id="checkup-rpt-tbl" style="display:none">
-          <thead><tr><th>Member</th><th>Level</th><th>Outcome</th><th>In Person</th><th>Result Notes</th></tr></thead>
+          <thead><tr><th>Member</th><th>Level</th><th>Outcome</th><th>Location</th><th>Result Notes</th></tr></thead>
           <tbody id="checkup-rpt-tbody"></tbody>
         </table>
       </div>
@@ -6992,6 +6990,13 @@ async function loadCheckupSessionList() {
       const conductor = s.conducted_staff ? `${s.conducted_staff.first_name} ${s.conducted_staff.last_name}` : '';
       return `<option value="${s.id}">${fmtDate(s.session_date)}${time}${conductor?' — '+conductor:''}</option>`;
     }).join('');
+
+  // Populate location filter from locations list
+  const locSel = document.getElementById('checkup-rpt-loc');
+  if (locSel) {
+    locSel.innerHTML = '<option value="">All locations</option>' +
+      locations.map(l => `<option value="${l.id}">${l.name}</option>`).join('');
+  }
 }
 
 async function loadCheckupReport() {
@@ -7004,10 +7009,6 @@ async function loadCheckupReport() {
     .select('*, members(first_name,last_name,email,location_id), practice_levels:practice_levels!checkup_results_level_assessed_fkey(short_name)')
     .eq('session_id', sessionId);
 
-  const { data: session } = await SB.from('checkup_sessions')
-    .select('session_date,session_time,conducted_staff:staff!checkup_sessions_conducted_by_fkey(first_name,last_name)')
-    .eq('id', sessionId).single();
-
   const tbody = document.getElementById('checkup-rpt-tbody');
   const tbl = document.getElementById('checkup-rpt-tbl');
 
@@ -7019,18 +7020,18 @@ async function loadCheckupReport() {
   };
 
   let filtered = (results||[]);
-  if (locFilter === 'assisi') filtered = filtered.filter(r => r.in_person);
-  else if (locFilter === 'online') filtered = filtered.filter(r => !r.in_person);
+  if (locFilter) filtered = filtered.filter(r => r.members?.location_id === locFilter);
 
   tbody.innerHTML = filtered.map(r => {
     const m = r.members;
     const levelName = r.practice_levels?.short_name || `Level ${r.level_assessed}`;
     const outcome = outcomeLabels[r.outcome] || r.outcome;
+    const locName = locations.find(l => l.id === m?.location_id)?.name || '—';
     return `<tr>
       <td>${m?.first_name||''} ${m?.last_name||''}</td>
       <td style="font-size:12px">Lvl ${r.level_assessed} — ${levelName}</td>
       <td>${outcome}</td>
-      <td style="text-align:center">${r.in_person?'✓':''}</td>
+      <td style="font-size:12px">${locName}</td>
       <td style="font-size:12px">${r.result_notes||'—'}</td>
     </tr>`;
   }).join('') || '<tr><td colspan="5" class="empty">No results found.</td></tr>';
