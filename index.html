@@ -2004,6 +2004,11 @@ I have read and understood this waiver and agree freely and voluntarily.</div>
             <option value="">All levels</option>
             ${Array.from({length:15},(_,i)=>`<option value="${i+1}">Level ${i+1}</option>`).join('')}
           </select>
+          <select id="rpt-milestone" style="padding:7px 10px;font-size:13px;border:1px solid var(--bg3);border-radius:var(--r)">
+            <option value="">Any sub-level</option>
+            <option value="none">No milestone (standard)</option>
+            <option value="2min_rotation">2-min rotation</option>
+          </select>
           <select id="rpt-status" style="padding:7px 10px;font-size:13px;border:1px solid var(--bg3);border-radius:var(--r)">
             <option value="">All statuses</option>
             <option value="active">Active</option>
@@ -6817,33 +6822,45 @@ async function loadLevelReport() {
   if (!SB) return;
   const level = document.getElementById('rpt-level').value;
   const status = document.getElementById('rpt-status').value;
+  const milestone = document.getElementById('rpt-milestone')?.value || '';
 
-  let qb = SB.from('v_members')
-    .select('first_name,last_name,email,current_level,level_name,location_name,status')
+  let qb = SB.from('members')
+    .select('first_name,last_name,email,current_level,level_milestone,status,location_id')
     .order('current_level').order('last_name');
 
   if (level) qb = qb.eq('current_level', parseInt(level));
   if (status) qb = qb.eq('status', status);
   else qb = qb.in('status', ['active','trial','hold']);
+  if (milestone === 'none') qb = qb.is('level_milestone', null);
+  else if (milestone) qb = qb.eq('level_milestone', milestone);
 
   const { data } = await qb;
+
+  const { data: lvls } = await SB.from('practice_levels').select('level_number,short_name');
+  const levelMap = {};
+  (lvls||[]).forEach(l => levelMap[l.level_number] = l.short_name);
+  const locMap = {};
+  locations.forEach(l => locMap[l.id] = l.name);
 
   const tbody = document.getElementById('level-tbody');
   const tbl = document.getElementById('level-tbl');
   const emailDiv = document.getElementById('level-report-emails');
   const emailList = document.getElementById('level-report-email-list');
 
-  tbody.innerHTML = (data||[]).map(m => `<tr>
-    <td>${m.first_name} ${m.last_name}</td>
-    <td style="font-size:12px">${m.email||'—'}</td>
-    <td>Lvl ${m.current_level} — ${m.level_name}</td>
-    <td style="font-size:12px">${m.location_name||'—'}</td>
-    <td>${m.status}</td>
-  </tr>`).join('') || '<tr><td colspan="5" class="empty">No members found.</td></tr>';
+  tbody.innerHTML = (data||[]).map(m => {
+    const levelName = levelMap[m.current_level] || '';
+    const subLevel = m.level_milestone === '2min_rotation' ? ' · 2-min rotation' : '';
+    return `<tr>
+      <td>${m.first_name} ${m.last_name}</td>
+      <td style="font-size:12px">${m.email||'—'}</td>
+      <td>Lvl ${m.current_level} — ${levelName}${subLevel}</td>
+      <td style="font-size:12px">${locMap[m.location_id]||'—'}</td>
+      <td>${m.status}</td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="5" class="empty">No members found.</td></tr>';
 
   tbl.style.display = '';
 
-  // Show email list for easy copy
   const emails = (data||[]).filter(m => m.email).map(m => m.email);
   if (emails.length) {
     emailList.textContent = emails.join(', ');
