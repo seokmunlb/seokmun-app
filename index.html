@@ -2058,6 +2058,55 @@ I have read and understood this waiver and agree freely and voluntarily.</div>
       </div>
     </div>
   </div>
+
+  <!-- Master Managed Members -->
+  <div class="card" style="margin-top:14px">
+    <div class="ch"><span class="ct">Master-Managed Members</span>
+      <button class="btn btn-sm" onclick="exportCSV('master-managed-tbody', ['Name','Email','Level','Location','Status'])">Export CSV</button>
+    </div>
+    <div class="cb">
+      <button class="btn btn-p" style="margin-bottom:12px" onclick="loadMasterManagedReport()">Load</button>
+      <div id="master-managed-emails" style="display:none;margin-bottom:10px;padding:8px 12px;background:var(--bg2);border-radius:var(--r);font-size:12px">
+        <strong>Email addresses:</strong><br>
+        <span id="master-managed-email-list" style="word-break:break-all"></span>
+        <button class="btn btn-sm" style="margin-top:6px" onclick="copyText(document.getElementById('master-managed-email-list').textContent)">Copy all emails</button>
+      </div>
+      <div style="overflow-x:auto">
+        <table class="tbl" id="master-managed-tbl" style="display:none">
+          <thead><tr><th>Name</th><th>Email</th><th>Level</th><th>Location</th><th>Status</th></tr></thead>
+          <tbody id="master-managed-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+  <!-- Checkup Session Report -->
+  <div class="card" style="margin-top:14px">
+    <div class="ch"><span class="ct">Checkup Session Report</span>
+      <button class="btn btn-sm" onclick="exportCSV('checkup-rpt-tbody', ['Member','Level','Outcome','In Person','Result Notes','Date','Conductor'])">Export CSV</button>
+    </div>
+    <div class="cb">
+      <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+        <select id="checkup-rpt-session" style="flex:1;padding:7px 10px;font-size:13px;border:1px solid var(--bg3);border-radius:var(--r)">
+          <option value="">Select a session…</option>
+        </select>
+        <select id="checkup-rpt-loc" style="padding:7px 10px;font-size:13px;border:1px solid var(--bg3);border-radius:var(--r)">
+          <option value="">All locations</option>
+          <option value="online">Online</option>
+          <option value="assisi">Assisi Heights</option>
+        </select>
+        <button class="btn btn-p" onclick="loadCheckupReport()">Load</button>
+      </div>
+      <div style="overflow-x:auto">
+        <table class="tbl" id="checkup-rpt-tbl" style="display:none">
+          <thead><tr><th>Member</th><th>Level</th><th>Outcome</th><th>In Person</th><th>Result Notes</th></tr></thead>
+          <tbody id="checkup-rpt-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
 </div>
 
 <div id="page-fees" class="page">
@@ -2548,7 +2597,7 @@ function nav(page) {
     broadcast: () => {},
     comms: loadCommsLog,
     fees: loadFeeOverview,
-    reports: () => {},
+    reports: () => { loadCheckupSessionList(); },
     payments: loadPaymentPageData,
     'fee-report': loadFeeReport,
     'levels-admin': loadLevelsAdmin,
@@ -6893,6 +6942,96 @@ async function loadAllMembersReport() {
     <td>${m.status}</td>
     <td style="font-size:12px">${fmtDate(m.join_date)}</td>
   </tr>`).join('') || '<tr><td colspan="6" class="empty">No members found.</td></tr>';
+
+  tbl.style.display = '';
+}
+
+async function loadMasterManagedReport() {
+  if (!SB) return;
+  const { data } = await SB.from('v_members')
+    .select('first_name,last_name,email,current_level,level_name,location_name,status')
+    .eq('master_managed', true)
+    .order('last_name');
+
+  const tbody = document.getElementById('master-managed-tbody');
+  const tbl = document.getElementById('master-managed-tbl');
+  const emailDiv = document.getElementById('master-managed-emails');
+  const emailList = document.getElementById('master-managed-email-list');
+
+  tbody.innerHTML = (data||[]).map(m => `<tr>
+    <td>${m.first_name} ${m.last_name}</td>
+    <td style="font-size:12px">${m.email||'—'}</td>
+    <td>Lvl ${m.current_level} — ${m.level_name}</td>
+    <td style="font-size:12px">${m.location_name||'—'}</td>
+    <td>${m.status}</td>
+  </tr>`).join('') || '<tr><td colspan="5" class="empty">No master-managed members found.</td></tr>';
+
+  tbl.style.display = '';
+
+  const emails = (data||[]).filter(m => m.email).map(m => m.email);
+  if (emails.length) {
+    emailList.textContent = emails.join(', ');
+    emailDiv.style.display = 'block';
+  } else {
+    emailDiv.style.display = 'none';
+  }
+async function loadCheckupSessionList() {
+  if (!SB) return;
+  const { data } = await SB.from('checkup_sessions')
+    .select('id,session_date,session_time,conducted_staff:staff!checkup_sessions_conducted_by_fkey(first_name,last_name)')
+    .order('session_date', {ascending: false})
+    .limit(50);
+
+  const sel = document.getElementById('checkup-rpt-session');
+  if (!sel) return;
+  sel.innerHTML = '<option value="">Select a session…</option>' +
+    (data||[]).map(s => {
+      const time = s.session_time ? ` ${s.session_time}` : '';
+      const conductor = s.conducted_staff ? `${s.conducted_staff.first_name} ${s.conducted_staff.last_name}` : '';
+      return `<option value="${s.id}">${fmtDate(s.session_date)}${time}${conductor?' — '+conductor:''}</option>`;
+    }).join('');
+}
+
+async function loadCheckupReport() {
+  if (!SB) return;
+  const sessionId = document.getElementById('checkup-rpt-session').value;
+  const locFilter = document.getElementById('checkup-rpt-loc').value;
+  if (!sessionId) { alert('Please select a session.'); return; }
+
+  const { data: results } = await SB.from('checkup_results')
+    .select('*, members(first_name,last_name,email,location_id), practice_levels:practice_levels!checkup_results_level_assessed_fkey(short_name)')
+    .eq('session_id', sessionId);
+
+  const { data: session } = await SB.from('checkup_sessions')
+    .select('session_date,session_time,conducted_staff:staff!checkup_sessions_conducted_by_fkey(first_name,last_name)')
+    .eq('id', sessionId).single();
+
+  const tbody = document.getElementById('checkup-rpt-tbody');
+  const tbl = document.getElementById('checkup-rpt-tbl');
+
+  const outcomeLabels = {
+    continue: 'Continue', progress: 'Progress', encouragement: 'Encouragement',
+    schedule_oo1: 'Schedule 1:1', level_up: 'Level Up ▲', level_down: 'Level Down ▼',
+    l3_daemaek: 'L3: Begin 2-min', l4_sojucheon: 'L4: Begin 2-min',
+    belly_massage: 'Belly Massage'
+  };
+
+  let filtered = (results||[]);
+  if (locFilter === 'assisi') filtered = filtered.filter(r => r.in_person);
+  else if (locFilter === 'online') filtered = filtered.filter(r => !r.in_person);
+
+  tbody.innerHTML = filtered.map(r => {
+    const m = r.members;
+    const levelName = r.practice_levels?.short_name || `Level ${r.level_assessed}`;
+    const outcome = outcomeLabels[r.outcome] || r.outcome;
+    return `<tr>
+      <td>${m?.first_name||''} ${m?.last_name||''}</td>
+      <td style="font-size:12px">Lvl ${r.level_assessed} — ${levelName}</td>
+      <td>${outcome}</td>
+      <td style="text-align:center">${r.in_person?'✓':''}</td>
+      <td style="font-size:12px">${r.result_notes||'—'}</td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="5" class="empty">No results found.</td></tr>';
 
   tbl.style.display = '';
 }
