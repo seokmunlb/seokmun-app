@@ -819,12 +819,20 @@ I have read and understood this waiver and agree freely and voluntarily.</div>
 
 <!-- ══ TRIALS ══ -->
 <div id="page-trials" class="page">
-  <div class="ph"><div><div class="pt">Trial Memberships</div><div class="ps">Expiring within 14 days · conversion tracking</div></div></div>
-  <div class="card" style="overflow-x:auto">
+  <div class="ph"><div><div class="pt">Trial Memberships</div><div class="ps">All trial members — conversion tracking</div></div></div>
+  <div class="sr" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+    <input id="trial-search" placeholder="Search by name…" style="flex:1;min-width:160px;padding:7px 10px;border:1px solid var(--bg3);border-radius:var(--r);font-size:13px" oninput="filterTrials()">
+    <select id="trial-sort" onchange="filterTrials()" style="padding:7px 10px;font-size:13px;border:1px solid var(--bg3);border-radius:var(--r)">
+      <option value="trial_end">Sort by trial end date</option>
+      <option value="join_date">Sort by join date</option>
+      <option value="name">Sort by name</option>
+      <option value="days_left">Sort by days left</option>
+    </select>
+  </div>
+  <div class="card" style="overflow-x:auto;margin-top:10px">
     <table class="tbl">
       <thead><tr>
-        <th>Member</th><th>Location</th><th>Trial Ends</th><th>Days Left</th>
-        <th>Warning Sent</th><th>Response</th><th>Staff Confirmed</th><th></th>
+        <th>Member</th><th>Location</th><th>Join Date</th><th>Trial Ends</th><th>Days Left</th><th></th>
       </tr></thead>
       <tbody id="trials-tbody"></tbody>
     </table>
@@ -4340,24 +4348,55 @@ async function loadAllLevelUps() {
 // ══════════════════════════════════════════════════════════
 //  TRIALS
 // ══════════════════════════════════════════════════════════
+let trialsData = [];
+
 async function loadTrials() {
   if (!SB) return;
-  const { data } = await SB.from('v_trials_expiring').select('*');
+  const { data } = await SB.from('v_members')
+    .select('id,first_name,last_name,email,location_name,trial_end_date,join_date')
+    .eq('status','trial')
+    .order('trial_end_date');
+
+  trialsData = (data||[]).map(t => {
+    const today = new Date();
+    const endDate = t.trial_end_date ? new Date(t.trial_end_date.split('T')[0]) : null;
+    const daysLeft = endDate ? Math.ceil((endDate - today) / (1000*60*60*24)) : null;
+    return {...t, daysLeft};
+  });
+
+  filterTrials();
+}
+
+function filterTrials() {
+  const q = document.getElementById('trial-search')?.value.toLowerCase() || '';
+  const sort = document.getElementById('trial-sort')?.value || 'trial_end';
+
+  let filtered = trialsData.filter(t =>
+    !q || `${t.first_name} ${t.last_name} ${t.email}`.toLowerCase().includes(q)
+  );
+
+  filtered.sort((a, b) => {
+    if (sort === 'join_date') return (a.join_date||'') > (b.join_date||'') ? 1 : -1;
+    if (sort === 'name') return `${a.last_name}${a.first_name}` > `${b.last_name}${b.first_name}` ? 1 : -1;
+    if (sort === 'days_left') return (a.daysLeft??999) - (b.daysLeft??999);
+    return (a.trial_end_date||'') > (b.trial_end_date||'') ? 1 : -1;
+  });
+
   const tbody = document.getElementById('trials-tbody');
-  tbody.innerHTML = data&&data.length ? data.map(t => `
-    <tr onclick="openMemberModal('${t.id}')">
+  tbody.innerHTML = filtered.length ? filtered.map(t => {
+    const daysColor = t.daysLeft !== null && t.daysLeft <= 14 ? 'b-inactive' : t.daysLeft !== null && t.daysLeft <= 30 ? 'b-trial' : 'b-active';
+    return `<tr onclick="openMemberModal('${t.id}')">
       <td><div class="mn">${t.first_name} ${t.last_name}</div><div class="me">${t.email}</div></td>
-      <td>${t.location_name}</td>
-      <td>${fmtDate(t.trial_end_date)}</td>
-      <td><span class="badge ${t.days_left<=3?'b-inactive':t.days_left<=7?'':'b-trial'}">${t.days_left}d</span></td>
-      <td style="color:${t.warning_email_sent?'var(--sage)':'var(--rust)'}">${t.warning_email_sent?'✓ Sent':'Not sent'}</td>
-      <td>${t.member_response?t.member_response.replace('_',' '):'—'}</td>
-      <td>
-        ${t.staff_confirmed?'<span class="badge b-active">Confirmed</span>':''}
+      <td style="font-size:12px">${t.location_name||'—'}</td>
+      <td style="font-size:12px">${fmtDate(t.join_date)}</td>
+      <td style="font-size:12px">${fmtDate(t.trial_end_date)}</td>
+      <td><span class="badge ${daysColor}">${t.daysLeft !== null ? t.daysLeft+'d' : '—'}</span></td>
+      <td style="white-space:nowrap">
         <button class="btn btn-sm" onclick="event.stopPropagation();generateTrialWarning('${t.id}','${t.email}','${t.first_name} ${t.last_name}')">Send Warning</button>
         <button class="btn btn-sm btn-s" onclick="event.stopPropagation();convertTrial('${t.id}')">Convert</button>
       </td>
-    </tr>`).join('') : '<tr><td colspan="8" class="empty">No trials expiring within 14 days.</td></tr>';
+    </tr>`;
+  }).join('') : '<tr><td colspan="6" class="empty">No trial members found.</td></tr>';
 }
 
 async function generateTrialWarning(memberId, email, name) {
@@ -6627,7 +6666,7 @@ function parseBulkRows(rows) {
     }
 
     // Level
-    const level = parseInt(row['Level']) || 1;
+    const level = row['Level'] !== '' && row['Level'] != null && String(row['Level']).trim() !== '' ? (parseInt(row['Level']) || 1) : null;
 
     // Group
     const rawGroup = String(row['Group']||'').trim();
@@ -6675,7 +6714,7 @@ function parseBulkRows(rows) {
       mail_merge_email: mailMergeEmail || null,
       gender,
       location_id: locationId,
-      current_level: level,
+      current_level: level || 1,
       orientation_group: group,
       status,
       join_date: joinDate,
@@ -6686,7 +6725,9 @@ function parseBulkRows(rows) {
       where_live: whereLive || null,
       seokmun_title: seokmunTitle || null,
       _enrollType: enrollType,
-      _raw: `${first} ${last} — ${email || 'no email'} — Lvl ${level} — ${status}`,
+      _levelBlank: !level,
+      _locBlank: !locationId,
+      _raw: `${first} ${last} — ${email || 'no email'} — ${level ? 'Lvl '+level : 'no level'} — ${status}`,
       _error: !first || !last ? 'Missing name' : null
     });
   }
@@ -6721,11 +6762,11 @@ function showBulkPreview(rows) {
         ${valid.map(r => `<tr>
           <td>${r.first_name} ${r.last_name}${r.title_before?` <span style="color:var(--ink3)">(${r.title_before})</span>`:''}</td>
           <td style="font-size:11px">${r.email||'—'}</td>
-          <td>Lvl ${r.current_level}</td>
-          <td style="font-size:11px">${locations.find(l=>l.id===r.location_id)?.name||'<span style="color:var(--rust)">Not matched</span>'}</td>
+          <td>${r._levelBlank?'<span style="color:var(--ink3);font-style:italic">blank→1</span>':`Lvl ${r.current_level}`}</td>
+          <td style="font-size:11px">${r._locBlank?'<span style="color:var(--ink3);font-style:italic">null</span>':locations.find(l=>l.id===r.location_id)?.name||'<span style="color:var(--rust)">Not matched</span>'}</td>
           <td>${r.status}</td>
           <td>${r.orientation_group}</td>
-          <td style="font-size:11px">${r.join_date}</td>
+          <td style="font-size:11px">${r.join_date||'—'}</td>
           <td style="font-size:11px">
             ${r.chair_modification?'🪑 Chair ':''}
             ${r.master_managed?'Master ':''}
