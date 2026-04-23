@@ -271,6 +271,7 @@ textarea{resize:vertical;min-height:68px}
     <div class="ns">Communications</div>
     <div class="ni" onclick="nav('absent')" data-p="absent"><span class="ni-ic">✉</span><span>Absent Emails</span></div>
     <div class="ni" onclick="nav('intro-invite')" data-p="intro-invite"><span class="ni-ic">◈</span><span>Intro Invite</span></div>
+    <div class="ni" onclick="nav('singleday-followup')" data-p="singleday-followup"><span class="ni-ic">◉</span><span>Single Day Follow-Up</span></div>
     <div class="ni" onclick="nav('broadcast')" data-p="broadcast"><span class="ni-ic">◻</span><span>Broadcast</span></div>
     <div class="ni" onclick="nav('comms')" data-p="comms"><span class="ni-ic">◫</span><span>Comms Log</span></div>
     <div class="ns">Fees</div>
@@ -1904,6 +1905,38 @@ I have read and understood this waiver and agree freely and voluntarily.</div>
   </div>
 </div>
 
+<!-- ══ SINGLE DAY FOLLOW-UP ══ -->
+<div id="page-singleday-followup" class="page">
+  <div class="ph"><div><div class="pt">Single Day Follow-Up</div><div class="ps">Send a follow-up email to someone who attended a single-day session or event</div></div></div>
+  <div class="g2">
+    <div class="card">
+      <div class="ch"><span class="ct">Recipient Details</span></div>
+      <div class="cb" style="display:flex;flex-direction:column;gap:10px">
+        <div class="fg"><label>First Name *</label><input id="sd-first" placeholder="First name"></div>
+        <div class="fg"><label>Last Name</label><input id="sd-last" placeholder="Last name"></div>
+        <div class="fg"><label>Email *</label><input id="sd-email" type="email" placeholder="email@example.com"></div>
+        <div class="fg"><label>Event / Session they attended</label><input id="sd-event" placeholder="e.g. Lotus Symposium, Rochester Health Fair…" value="the Seokmun Hoheup Saturday morning practice"></div>
+        <div class="fg"><label>Your name (sender)</label><input id="sd-sender" placeholder="Your name"></div>
+        <div style="border-top:1px solid var(--bg2);padding-top:10px">
+          <label class="cr"><input type="checkbox" id="sd-add-prospective"><span>Also add this person as a Prospective member</span></label>
+        </div>
+        <button class="btn btn-p" style="margin-top:4px" onclick="generateSingleDayFollowup()">✦ Generate Follow-Up Email</button>
+      </div>
+    </div>
+    <div class="card" id="sd-preview" style="display:none">
+      <div class="ch"><span class="ct">Follow-Up Email</span>
+        <button class="btn btn-sm" onclick="copyEmailText('sd-email-body',this)">Copy</button>
+      </div>
+      <div class="cb">
+        <div class="ep" style="margin-bottom:10px">
+          <div class="em" id="sd-email-meta"></div>
+        </div>
+        <textarea id="sd-email-body" rows="20" style="width:100%;font-size:12px;font-family:monospace;padding:8px;border:1px solid var(--bg3);border-radius:var(--r);resize:vertical"></textarea>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- ══ BROADCAST ══ -->
 <div id="page-broadcast" class="page">
   <div class="ph"><div><div class="pt">Broadcast Email</div><div class="ps">Newsletter · workshop reminders · special events · bright light classes</div></div></div>
@@ -2601,6 +2634,12 @@ function nav(page) {
       }
     },
     broadcast: () => {},
+    'singleday-followup': () => {
+      const senderEl = document.getElementById('sd-sender');
+      if (senderEl && !senderEl.value && currentStaff) {
+        senderEl.value = `${currentStaff.first_name} ${currentStaff.last_name}`;
+      }
+    },
     comms: loadCommsLog,
     fees: loadFeeOverview,
     reports: () => { loadCheckupSessionList(); },
@@ -5465,6 +5504,40 @@ We look forward to meeting you!
 Warm regards,
 {staff_name}
 {org}` },
+
+    { key: 'single_day_followup', category: 'Prospective', name: 'Single Day Visit Follow-Up', subject: 'Thank you for attending — Seokmun Hoheup Practice',
+      placeholders: '{first_name}, {event_name}, {staff_name}, {org}',
+      body: `Dear {first_name},
+
+Thank you for attending the Seokmun Hoheup Saturday morning practice at {event_name}.
+
+If you are interested in learning more about the Seokmun Hoheup Program, we offer an introductory class — free of charge — and you are warmly welcome to join us:
+
+ONLINE SESSION — Tuesdays 12:00–1:00 PM (America/Chicago)
+Google Meeting ID: JOA-DMMW-WVV
+Google Meet: https://meet.google.com/joa-dmmw-wvv
+
+Register here: https://cal.com/seokmunhoheup/beginner
+
+────────────────────────────────────────
+ABOUT THE PROGRAM
+────────────────────────────────────────
+Seokmun Hoheup is a lower belly centered breathing practice guided through a structured level system. Designed to support self-development and self-completion, it integrates coordinated physical movements with focused attention on the lower abdomen to cultivate natural, sustainable breathing patterns and lasting whole-body change. The program is simple and accessible, making it easy for anyone to learn and practice.
+
+────────────────────────────────────────
+ABOUT THE INTRODUCTION SESSION
+────────────────────────────────────────
+Join the Introductory Session to learn the basics of the Seokmun Hoheup Program. During this one-hour session, we will practice the breathing exercises together. Even by attending a single session, you will learn practical breathing principles that you can apply on your own.
+
+You are welcome to simply attend, experience the practice, and take from it what is helpful to you.
+
+Please prepare a carpeted space or yoga mat, as the session includes gentle floor exercises performed while lying down.
+
+cc: Dr Paul Min (Cheon-Yeon)
+
+Warmly,
+{staff_name}
+{org}` },
   ];
 }
 
@@ -7092,6 +7165,81 @@ function exportCSV(tbodyId, headers) {
   a.href = URL.createObjectURL(blob);
   a.download = `seokmun-report-${todayLocal()}.csv`;
   a.click();
+}
+
+async function generateSingleDayFollowup() {
+  const first = document.getElementById('sd-first').value.trim();
+  const last = document.getElementById('sd-last').value.trim();
+  const email = document.getElementById('sd-email').value.trim();
+  const event = document.getElementById('sd-event').value.trim() || 'the Seokmun Hoheup Saturday morning practice';
+  const sender = document.getElementById('sd-sender').value.trim() || (currentStaff ? `${currentStaff.first_name} ${currentStaff.last_name}` : 'Linda Billau');
+  const org = orgConfig.org_subtitle || 'Seokmun Hoheup Practice';
+
+  if (!first || !email) { alert('Please enter at least a first name and email address.'); return; }
+
+  const body = `Dear ${first},
+
+Thank you for attending ${event}.
+
+If you are interested in learning more about the Seokmun Hoheup Program, we offer an introductory class — free of charge — and you are warmly welcome to join us:
+
+ONLINE SESSION — Tuesdays 12:00–1:00 PM (America/Chicago)
+Google Meeting ID: JOA-DMMW-WVV
+Google Meet: https://meet.google.com/joa-dmmw-wvv
+
+Register here: https://cal.com/seokmunhoheup/beginner
+
+────────────────────────────────────────
+ABOUT THE PROGRAM
+────────────────────────────────────────
+Seokmun Hoheup is a lower belly centered breathing practice guided through a structured level system. Designed to support self-development and self-completion, it integrates coordinated physical movements with focused attention on the lower abdomen to cultivate natural, sustainable breathing patterns and lasting whole-body change. The program is simple and accessible, making it easy for anyone to learn and practice.
+
+────────────────────────────────────────
+ABOUT THE INTRODUCTION SESSION
+────────────────────────────────────────
+Join the Introductory Session to learn the basics of the Seokmun Hoheup Program. During this one-hour session, we will practice the breathing exercises together. Even by attending a single session, you will learn practical breathing principles that you can apply on your own.
+
+You are welcome to simply attend, experience the practice, and take from it what is helpful to you.
+
+Please prepare a carpeted space or yoga mat, as the session includes gentle floor exercises performed while lying down.
+
+cc: Dr Paul Min (Cheon-Yeon)
+
+Warmly,
+${sender}
+${org}`;
+
+  const subject = `Thank you for attending — ${org}`;
+
+  document.getElementById('sd-email-meta').innerHTML = `<strong>To:</strong> ${first} ${last} &lt;${email}&gt;<br><strong>Subject:</strong> ${subject}`;
+  document.getElementById('sd-email-body').value = body;
+  document.getElementById('sd-preview').style.display = 'block';
+
+  // Log to communications
+  if (SB) {
+    await SB.from('communications').insert({
+      recipient_email: email,
+      recipient_name: `${first} ${last}`.trim(),
+      comm_type: 'single_day_followup',
+      subject, body,
+      sent_by: currentStaff?.id
+    });
+  }
+
+  // Optionally add as prospective
+  if (document.getElementById('sd-add-prospective').checked) {
+    const { data: newMember, error } = await SB.from('members').insert({
+      first_name: first, last_name: last || '', email,
+      status: 'prospective',
+      join_date: todayLocal(),
+      orientation_group: 'group1',
+      created_by: currentStaff?.id
+    }).select('id').single();
+    if (!error && newMember) {
+      await SB.from('onboarding').insert({ member_id: newMember.id });
+      alert(`✓ ${first} ${last} added as a prospective member.`);
+    }
+  }
 }
 
 function copyText(text) {
