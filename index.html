@@ -4109,18 +4109,18 @@ SEOKMUN™ and SEOKMUN HOHEUP™ are trademarks of Hanjo.`;
 
     if (assisiMembers.length) {
       const subject = `Seokmun Hoheup Checkup Results — ${fmtDate(sessionDate)} · ${org}`;
-      let body = `Dear Assisi Heights Members,\n\nYour Seokmun Hoheup Practice checkup has been completed.\n\nCheckup Date: ${fmtDate(sessionDate)}\nAssessed by: ${conductorName}\n\n`;
+      let body = `Dear Assisi Heights Members,\n\nYour Seokmun Hoheup Practice checkup has been completed.\n\nCheckup Date: ${fmtDate(sessionDate)}\nAssessed by: Grand Master ${conductorName}\n\n`;
       body += `CHECKUP RESULTS\n────────────────────────────────────────\n\n`;
       for (const { m, r } of assisiMembers) {
         const { data: levelData } = await SB.from('practice_levels').select('*').eq('level_number', r.level_assessed).single();
         const levelName = levelData?.short_name || `Level ${r.level_assessed}`;
-        const outcomeLabel = {continue:'All remain the same',progress:`Progress${r.progress_pct?` — ${r.progress_pct}%`:''}`,encouragement:'Encouragement',schedule_oo1:'1:1 session recommended'}[r.outcome] || r.outcome;
+        const outcomeLabel = {continue:'All remain the same',progress:`Progress${r.progress_pct?` — ${r.progress_pct}%`:''}`,encouragement:'Encouragement',schedule_oo1:'1:1 session recommended',start:'Start',l3_daemaek:'L3: Begin 2-min rotation',l4_sojucheon:'L4: Begin 2-min rotation',l5_complete:'L5: Complete — Start Review',belly_massage:'Belly Massage recommended'}[r.outcome] || r.outcome;
         body += `${m.first_name} ${m.last_name}\n`;
         body += `Level: ${levelName} — ${outcomeLabel}\n`;
         if (r.result_notes) body += `Note: ${r.result_notes}\n`;
         body += '\n';
       }
-      body += `Warm regards,\n${org}\n\n────────────────────────────────────────\n© 2025 Hanjo. All rights reserved.\nSEOKMUN™ and SEOKMUN HOHEUP™ are trademarks of Hanjo.`;
+      body += `cc: Cheon-Yeon (Dr Paul Min)\n\nWarm regards,\nLinda Billau, Instructor\n${org}\n\n────────────────────────────────────────\n© 2025 Hanjo. All rights reserved.\nSEOKMUN™ and SEOKMUN HOHEUP™ are trademarks of Hanjo.`;
 
       // Log once per member
       for (const { m } of assisiMembers) {
@@ -6206,7 +6206,7 @@ function generateCheckupResultEmail(m, r, levelData, conductorName, sessionDate,
 Your Seokmun Hoheup Practice checkup has been completed.
 
 Checkup Date: ${sessionDate}
-Assessed by: ${conductorName}
+Assessed by: Grand Master ${conductorName}
 Level: ${levelName}
 
 All remain the same.${notesBlock}
@@ -6232,7 +6232,7 @@ SEOKMUN™ and SEOKMUN HOHEUP™ are trademarks of Hanjo.`;
 Your Seokmun Hoheup Practice checkup has been completed.
 
 Checkup Date: ${sessionDate}
-Assessed by: ${conductorName}
+Assessed by: Grand Master ${conductorName}
 Level: ${levelName}${pct !== '' ? ` — ${pct}%` : ''}
 ${acuBlock}${notesBlock}${imgBlock}
 cc: Cheon-Yeon (Dr Paul Min)
@@ -6252,7 +6252,7 @@ SEOKMUN™ and SEOKMUN HOHEUP™ are trademarks of Hanjo.`;
 Your Seokmun Hoheup Practice checkup has been completed.
 
 Checkup Date: ${sessionDate}
-Assessed by: ${conductorName}
+Assessed by: Grand Master ${conductorName}
 Level: ${levelName}
 
 Your dedication to the practice is seen and appreciated. Each session, however it feels, is meaningful. Please continue — you are on the right path.${notesBlock}
@@ -6275,7 +6275,7 @@ SEOKMUN™ and SEOKMUN HOHEUP™ are trademarks of Hanjo.`;
 Your Seokmun Hoheup Practice checkup has been completed.
 
 Checkup Date: ${sessionDate}
-Assessed by: ${conductorName}
+Assessed by: Grand Master ${conductorName}
 Level: ${levelName}
 
 A one-on-one session with the Master has been recommended. We will be in touch to schedule a time that works for you.${notesBlock}
@@ -6296,7 +6296,7 @@ SEOKMUN™ and SEOKMUN HOHEUP™ are trademarks of Hanjo.`;
 Your Seokmun Hoheup Practice checkup has been completed.
 
 Checkup Date: ${sessionDate}
-Assessed by: ${conductorName}
+Assessed by: Grand Master ${conductorName}
 Level: ${levelName}
 
 You have been asked to return to Level ${r.level_assessed} to deepen your foundation before advancing.${notesBlock}
@@ -6317,7 +6317,7 @@ SEOKMUN™ and SEOKMUN HOHEUP™ are trademarks of Hanjo.`;
 Your Seokmun Hoheup Practice checkup has been completed.
 
 Checkup Date: ${sessionDate}
-Assessed by: ${conductorName}
+Assessed by: Grand Master ${conductorName}
 Level: ${levelName}
 ${notesBlock}
 cc: Cheon-Yeon (Dr Paul Min)
@@ -6357,7 +6357,7 @@ function generateLevelDownEmail(m, r, downLevel, conductorName, sessionDate, org
 Your Seokmun Hoheup Practice checkup has been completed.
 
 Checkup Date: ${sessionDate}
-Assessed by: ${conductorName}
+Assessed by: Grand Master ${conductorName}
 ${notesBlock}
 After careful assessment, ${conductorName} has guided you to return to ${downLevelName} to deepen your foundation. This is a meaningful part of the practice — returning to an earlier level allows you to strengthen and refine what is already there, creating a more stable ground for everything that follows. Please receive this with an open heart.
 
@@ -6685,7 +6685,7 @@ SEOKMUN™ and SEOKMUN HOHEUP™ are trademarks of Hanjo.`;
 Congratulations — you have advanced to ${newLevel?.short_name||'Level '+toLevelNum}!
 
 Checkup Date: ${sessionDate}
-Assessed by: ${conductorName}
+Assessed by: Grand Master ${conductorName}
 
 ${r.result_notes?`NOTES FROM GRAND MASTER ${conductorName}\n────────────────────────────\n${r.result_notes}\n\n`:''}YOUR NEXT STEPS
 ────────────────────────────
