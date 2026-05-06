@@ -2417,6 +2417,8 @@ const ACU_POINT_MERIDIAN = {
 let SB = null;         // Supabase client
 let currentStaff = null;
 let currentSessionId = null;
+let sessionConductorId = null; // conductor for current session
+let currentSessionDate = null; // date of current session
 let sessionAddedMembers = []; // members added to current checkup session
 let convertingProspectiveId = null; // ID of prospective being converted
 let editingMemberId = null; // ID of member currently being edited
@@ -3749,6 +3751,8 @@ async function createSession() {
   const date = document.getElementById('ss-date').value;
   const conductor = document.getElementById('ss-conductor').value;
   if (!date || !conductor) { alert('Please set the session date and who conducted it.'); return; }
+  sessionConductorId = conductor;
+  currentSessionDate = date;
 
   const sessionTime = document.getElementById('ss-time').value || '12:00';
   const { data: session, error } = await SB.from('checkup_sessions').insert({
@@ -3983,8 +3987,8 @@ async function saveSession() {
   // Generate emails
   const emailOutput = document.getElementById('sess-email-output');
   const emailsToShow = [];
-  const sessionDate = document.getElementById('ss-date').value;
-  const conductorData = staffList.find(s => s.id === document.getElementById('ss-conductor').value);
+  const sessionDate = document.getElementById('ss-date').value || currentSessionDate;
+  const conductorData = staffList.find(s => s.id === (document.getElementById('ss-conductor').value || sessionConductorId));
   const conductorName = conductorData ? `${conductorData.first_name} ${conductorData.last_name}` : 'Grand Master';
   const org = orgConfig.org_subtitle || 'Seokmun Hoheup Practice';
 
@@ -4177,6 +4181,8 @@ async function loadSessionHistory() {
 
 async function reopenSession(id, date, time, conductorId) {
   currentSessionId = id;
+  sessionConductorId = conductorId;
+  currentSessionDate = date;
 
   const { data: members } = await SB.from('v_members')
     .select('*').in('status',['active','trial']).order('last_name');
@@ -5944,7 +5950,10 @@ Register here: https://cal.com/seokmunhoheup/beginner
 
 Please don't hesitate to reach out with any questions — we are here to support you.
 
+cc: Cheon-Yeon (Dr Paul Min)
+
 Warm regards,
+Linda Billau, Instructor
 ${org}
 
 ────────────────────────────────────────
@@ -5974,7 +5983,10 @@ Grand Master will assess your readiness to advance to Level 6 at your next check
 
 Please reach out if you have any questions.
 
+cc: Cheon-Yeon (Dr Paul Min)
+
 Warm regards,
+Linda Billau, Instructor
 ${org}
 
 ────────────────────────────────────────
@@ -6028,7 +6040,10 @@ In higher levels, one can be self-aware and relax the belly independently — bu
 
 Please try this before your next practice session and let us know how it goes. We are here to support you.
 
+cc: Cheon-Yeon (Dr Paul Min)
+
 Warm regards,
+Linda Billau, Instructor
 ${org}
 
 ────────────────────────────────────────
@@ -6060,7 +6075,10 @@ Recite mentally, silently with a fervent heart, 3 times at the start of Breathin
 
 Please reach out if you have any questions about your practice.
 
+cc: Cheon-Yeon (Dr Paul Min)
+
 Warm regards,
+Linda Billau, Instructor
 ${org}
 
 ────────────────────────────────────────
@@ -6094,7 +6112,10 @@ Recite mentally, silently with a fervent heart, 3 times at the start of Breathin
 
 Please reach out if you have any questions.
 
+cc: Cheon-Yeon (Dr Paul Min)
+
 Warm regards,
+Linda Billau, Instructor
 ${org}
 
 ────────────────────────────────────────
@@ -6128,7 +6149,10 @@ Grand Master will assess the 2-minute rotation at your next checkup. Please cont
 
 Please reach out if you have any questions.
 
+cc: Cheon-Yeon (Dr Paul Min)
+
 Warm regards,
+Linda Billau, Instructor
 ${org}
 
 ────────────────────────────────────────
@@ -6152,7 +6176,10 @@ You are now ready to advance to Level 4. Grand Master will confirm your advancem
 
 Continue your daily practice. Well done on this achievement.
 
+cc: Cheon-Yeon (Dr Paul Min)
+
 Warm regards,
+Linda Billau, Instructor
 ${org}
 
 ────────────────────────────────────────
@@ -6175,7 +6202,10 @@ Level: ${levelName}
 
 All remain the same.${notesBlock}
 ${m.flag_one_on_one?'\nA one-on-one session has been recommended. Please contact us to arrange a time.\n':''}
+cc: Cheon-Yeon (Dr Paul Min)
+
 Warm regards,
+Linda Billau, Instructor
 ${org}
 
 ────────────────────────────────────────
@@ -6196,7 +6226,10 @@ Checkup Date: ${sessionDate}
 Assessed by: ${conductorName}
 Level: ${levelName}${pct !== '' ? ` — ${pct}%` : ''}
 ${acuBlock}${notesBlock}${imgBlock}
+cc: Cheon-Yeon (Dr Paul Min)
+
 Warm regards,
+Linda Billau, Instructor
 ${org}
 
 ────────────────────────────────────────
@@ -6216,7 +6249,10 @@ Level: ${levelName}
 Your dedication to the practice is seen and appreciated. Each session, however it feels, is meaningful. Please continue — you are on the right path.${notesBlock}
 We will be in touch with some personal encouragement and support.
 
+cc: Cheon-Yeon (Dr Paul Min)
+
 Warm regards,
+Linda Billau, Instructor
 ${org}
 
 ────────────────────────────────────────
@@ -6234,7 +6270,10 @@ Assessed by: ${conductorName}
 Level: ${levelName}
 
 A one-on-one session with the Master has been recommended. We will be in touch to schedule a time that works for you.${notesBlock}
+cc: Cheon-Yeon (Dr Paul Min)
+
 Warm regards,
+Linda Billau, Instructor
 ${org}
 
 ────────────────────────────────────────
@@ -6252,7 +6291,10 @@ Assessed by: ${conductorName}
 Level: ${levelName}
 
 You have been asked to return to Level ${r.level_assessed} to deepen your foundation before advancing.${notesBlock}
+cc: Cheon-Yeon (Dr Paul Min)
+
 Warm regards,
+Linda Billau, Instructor
 ${org}
 
 ────────────────────────────────────────
@@ -6269,7 +6311,10 @@ Checkup Date: ${sessionDate}
 Assessed by: ${conductorName}
 Level: ${levelName}
 ${notesBlock}
+cc: Cheon-Yeon (Dr Paul Min)
+
 Warm regards,
+Linda Billau, Instructor
 ${org}
 
 ────────────────────────────────────────
@@ -6327,7 +6372,10 @@ PRACTICE GUIDANCE
 
 Please let us know if you would like to schedule a one-on-one session to go through the postures and practice together.
 
+cc: Cheon-Yeon (Dr Paul Min)
+
 Warm regards,
+Linda Billau, Instructor
 ${org}
 
 ────────────────────────────────────────
@@ -6636,7 +6684,10 @@ The Master would like to meet with you for a personal 1:1 session to introduce y
 
 ${newLevel?.posture_sheet_url?`Your Level ${toLevelNum} posture sheet:\n${newLevel.posture_sheet_url}\n\n`:''}We look forward to celebrating this milestone with you.
 
+cc: Cheon-Yeon (Dr Paul Min)
+
 Warm regards,
+Linda Billau, Instructor
 ${org}
 
 ────────────────────────────────────────
