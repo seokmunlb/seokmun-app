@@ -3987,7 +3987,7 @@ async function saveSession() {
   // Generate emails
   const emailOutput = document.getElementById('sess-email-output');
   const emailsToShow = [];
-  const sessionDate = document.getElementById('ss-date').value || currentSessionDate;
+  const sessionDate = currentSessionDate || document.getElementById('ss-date').value;
   const conductorData = staffList.find(s => s.id === (document.getElementById('ss-conductor').value || sessionConductorId));
   const conductorName = conductorData ? `${conductorData.first_name} ${conductorData.last_name}` : 'Grand Master';
   const org = orgConfig.org_subtitle || 'Seokmun Hoheup Practice';
