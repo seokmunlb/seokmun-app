@@ -2606,6 +2606,8 @@ function nav(page) {
   const pg = document.getElementById('page-' + page);
   if (pg) pg.classList.add('active');
   document.querySelectorAll(`.ni[data-p="${page}"]`).forEach(n => n.classList.add('active'));
+  window.scrollTo(0, 0);
+  window.scrollTo(0, 0);
 
   // Load page data
   const loaders = {
@@ -3797,10 +3799,12 @@ function memberRowHTML(m, existing) {
     <td>
       <select id="out-${m.id}" style="min-width:130px;padding:5px 6px;font-size:12px" onchange="toggleProgressField('${m.id}',this.value)">
         <option value="" ${!outcome?'selected':''}>— no result —</option>
+        <option value="start" ${outcome==='start'?'selected':''}>Start</option>
         <option value="continue" ${outcome==='continue'?'selected':''}>Continue</option>
         <option value="progress" ${outcome==='progress'?'selected':''}>Progress</option>
         <option value="l3_daemaek" ${outcome==='l3_daemaek'?'selected':''}>L3: Begin 2-min rotation</option>
         <option value="l4_sojucheon" ${outcome==='l4_sojucheon'?'selected':''}>L4: Begin 2-min rotation</option>
+        <option value="l5_complete" ${outcome==='l5_complete'?'selected':''}>L5: Complete — Start Review</option>
         <option value="belly_massage" ${outcome==='belly_massage'?'selected':''}>Try Belly Massage</option>
         <option value="encouragement" ${outcome==='encouragement'?'selected':''}>Encouragement</option>
         <option value="schedule_oo1" ${outcome==='schedule_oo1'?'selected':''}>Schedule 1:1</option>
@@ -4026,6 +4030,14 @@ async function saveSession() {
     } else if (r.outcome === 'belly_massage') {
       subject = `Your Practice Tip — Belly Massage · ${org}`;
       body = generateBellyMassageEmail({...m, result_notes: r.result_notes}, conductorName, fmtDate(sessionDate), org);
+      commType = 'checkup_result';
+    } else if (r.outcome === 'start') {
+      subject = `Your First Checkup — ${fmtDate(sessionDate)} · ${org}`;
+      body = generateStartEmail({...m, result_notes: r.result_notes}, conductorName, fmtDate(sessionDate), org);
+      commType = 'checkup_result';
+    } else if (r.outcome === 'l5_complete') {
+      subject = `Level 5 Complete — Start Review · ${org}`;
+      body = generateL5CompleteEmail({...m, result_notes: r.result_notes}, conductorName, fmtDate(sessionDate), org);
       commType = 'checkup_result';
     } else {
       subject = `Your Checkup Result — ${fmtDate(sessionDate)} · ${org}`;
@@ -5905,6 +5917,69 @@ We will be in touch with details on the next scheduled checkup. We encourage you
 Warm regards,
 ${org}
 ${loc?.name||''}`;
+}
+
+function generateStartEmail(m, conductorName, sessionDate, org) {
+  const notesBlock = m.result_notes ? `\nNote from Grand Master ${conductorName}:\n${m.result_notes}\n` : '';
+  return `Dear ${m.first_name},
+
+Your Seokmun Hoheup Practice checkup has been completed.
+
+Checkup Date: ${sessionDate}
+Assessed by: Grand Master ${conductorName}
+${notesBlock}
+Welcome to the practice! We hope your first sessions have been going well.
+
+How is the practice going for you? Do you have any questions as you get started?
+
+We warmly invite you to join the weekly introductory session with Master Cheon-Yeon (Dr. Paul Min) — it's a great opportunity to refresh how to begin, ask questions, and practice together with others.
+
+ONLINE INTRODUCTORY SESSION
+────────────────────────────────────────
+Tuesdays 12:00–1:00 PM (America/Chicago)
+Google Meeting ID: JOA-DMMW-WVV
+Google Meet: https://meet.google.com/joa-dmmw-wvv
+
+Register here: https://cal.com/seokmunhoheup/beginner
+
+Please don't hesitate to reach out with any questions — we are here to support you.
+
+Warm regards,
+${org}
+
+────────────────────────────────────────
+© 2025 Hanjo. All rights reserved.
+SEOKMUN™ and SEOKMUN HOHEUP™ are trademarks of Hanjo.`;
+}
+
+function generateL5CompleteEmail(m, conductorName, sessionDate, org) {
+  const notesBlock = m.result_notes ? `\nNote from Grand Master ${conductorName}:\n${m.result_notes}\n` : '';
+  return `Dear ${m.first_name},
+
+Your Seokmun Hoheup Practice checkup has been completed.
+
+Checkup Date: ${sessionDate}
+Assessed by: Grand Master ${conductorName}
+Level: 5 — Seseonbeop
+${notesBlock}
+Grand Master ${conductorName} has confirmed that you have completed Level 5. You are now beginning the Level 5 review period.
+
+LEVEL 5 SHIMBEOP
+────────────────────────────────────────
+"I bring up Jinki (genuine Ki) and gather it into the Nihwangung Baekhoe, which is located at the crown of the head."
+
+Continue reciting this mentally, silently with a fervent heart, 3 times at the start of Breathing Practice.
+
+Grand Master will assess your readiness to advance to Level 6 at your next checkup. Continue your daily practice with care and consistency.
+
+Please reach out if you have any questions.
+
+Warm regards,
+${org}
+
+────────────────────────────────────────
+© 2025 Hanjo. All rights reserved.
+SEOKMUN™ and SEOKMUN HOHEUP™ are trademarks of Hanjo.`;
 }
 
 function generateBellyMassageEmail(m, conductorName, sessionDate, org) {
