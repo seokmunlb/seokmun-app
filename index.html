@@ -3798,7 +3798,7 @@ function memberRowHTML(m, existing) {
   const internalNotes = existing?.internal_notes || '';
   const inPerson = existing?.in_person || false;
   return `<tr id="brow-${m.id}" data-loc="${m.location_id||''}">
-    <td><div class="mn">${m.first_name} ${m.last_name}</div><div class="me" style="font-size:11px;color:var(--ink3)">${m.email}</div></td>
+    <td><div class="mn">${m.first_name} ${m.last_name}${m.master_managed?' <span style="font-size:10px;background:#f0e8ff;color:#4a1a7a;padding:1px 5px;border-radius:3px;font-weight:500">Master</span>':''}</div><div class="me" style="font-size:11px;color:var(--ink3)">${m.email}</div></td>
     <td><span class="badge b-${m.level_tier}">Lvl ${m.current_level} — ${m.level_name}${m.level_milestone==='2min_rotation'?' · 2-min rotation':''}</span>
     <td>
       <select id="out-${m.id}" style="min-width:130px;padding:5px 6px;font-size:12px" onchange="toggleProgressField('${m.id}',this.value)">
