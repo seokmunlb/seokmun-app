@@ -2059,6 +2059,9 @@ I have read and understood this waiver and agree freely and voluntarily.</div>
             <option value="14">Level 14</option>
             <option value="15">Level 15</option>
           </select>
+          <select id="rpt-location" style="padding:7px 10px;font-size:13px;border:1px solid var(--bg3);border-radius:var(--r)">
+            <option value="">All locations</option>
+          </select>
           <select id="rpt-status" style="padding:7px 10px;font-size:13px;border:1px solid var(--bg3);border-radius:var(--r)">
             <option value="">All statuses</option>
             <option value="active">Active</option>
@@ -2646,7 +2649,12 @@ function nav(page) {
     },
     comms: loadCommsLog,
     fees: loadFeeOverview,
-    reports: () => { loadCheckupSessionList(); },
+    reports: () => {
+      loadCheckupSessionList();
+      const locSel = document.getElementById('rpt-location');
+      if (locSel) locSel.innerHTML = '<option value="">All locations</option>' +
+        locations.map(l => `<option value="${l.id}">${l.name}</option>`).join('');
+    },
     payments: loadPaymentPageData,
     'fee-report': loadFeeReport,
     'levels-admin': loadLevelsAdmin,
@@ -3330,11 +3338,7 @@ Please prepare a carpeted space or yoga mat, as the session includes gentle floo
 The Introduction Session is offered free of charge and is hosted by Seokmun Domun Association USA as part of our monthly membership program.
 
 Warmly,
-${sig}
-
-────────────────────────────────────────
-© 2025 Hanjo. All rights reserved.
-SEOKMUN™ and SEOKMUN HOHEUP™ are trademarks of Hanjo.`;
+${sig}`;
 
   // Log communication
   await SB.from('communications').insert({
@@ -3989,7 +3993,7 @@ async function saveSession() {
   const emailsToShow = [];
   const sessionDate = currentSessionDate || document.getElementById('ss-date').value;
   const conductorData = staffList.find(s => s.id === (document.getElementById('ss-conductor').value || sessionConductorId));
-  const conductorName = conductorData ? `${conductorData.first_name} ${conductorData.last_name}` : 'Grand Master';
+  const conductorName = conductorData ? `${conductorData.first_name} ${conductorData.last_name}` : 'Cheon Pyung';
   const org = orgConfig.org_subtitle || 'Seokmun Hoheup Practice';
 
   // Get Assisi location ID
@@ -4084,11 +4088,7 @@ HOW TO DO BELLY MASSAGE
 · Place your palm on the navel and draw clockwise circles.
 · Place your left palm under the diaphragm and your right palm over the navel. Hold and breathe.
 
-Please try this before your next practice session and let us know how it goes.
-
-────────────────────────────────────────
-© 2025 Hanjo. All rights reserved.
-SEOKMUN™ and SEOKMUN HOHEUP™ are trademarks of Hanjo.`;
+Please try this before your next practice session and let us know how it goes.`;
     }
 
     await SB.from('communications').insert({
@@ -4116,7 +4116,7 @@ SEOKMUN™ and SEOKMUN HOHEUP™ are trademarks of Hanjo.`;
         const levelName = levelData?.short_name || `Level ${r.level_assessed}`;
         const outcomeLabel = {continue:'All remain the same',progress:`Progress${r.progress_pct?` — ${r.progress_pct}%`:''}`,encouragement:'Encouragement',schedule_oo1:'1:1 session recommended',start:'Start',l3_daemaek:'L3: Begin 2-min rotation',l4_sojucheon:'L4: Begin 2-min rotation',l5_complete:'L5: Complete — Start Review',belly_massage:'Belly Massage recommended'}[r.outcome] || r.outcome;
         body += `${m.first_name} ${m.last_name}\n`;
-        body += `Level: ${levelName} — ${outcomeLabel}\n`;
+        body += `Level: ${r.level_assessed} — ${levelName} — ${outcomeLabel}\n`;
         if (r.result_notes) body += `Note: ${r.result_notes}\n`;
         body += '\n';
       }
@@ -4699,11 +4699,7 @@ Please prepare a carpeted space or yoga mat, as the session includes gentle floo
 The Introduction Session is offered free of charge and is hosted by Seokmun Domun Association USA as part of our monthly membership program.
 
 Warmly,
-${sig}
-
-────────────────────────────────────────
-© 2025 Hanjo. All rights reserved.
-SEOKMUN™ and SEOKMUN HOHEUP™ are trademarks of Hanjo.`;
+${sig}`;
 
   const preview = document.getElementById('ii-preview');
   preview.innerHTML = `
@@ -4770,11 +4766,7 @@ We hope to see you there.
 
 Warm regards,
 Seokmun Domun US
-Seokmun Hoheup Practice
-
-────────────────────────────────────────
-© 2025 Hanjo. All rights reserved.
-SEOKMUN™ and SEOKMUN HOHEUP™ are trademarks of Hanjo.`;
+Seokmun Hoheup Practice`;
 }
 
 async function logBroadcast(type, subject, body, count) {
@@ -5963,11 +5955,7 @@ cc: Cheon-Yeon (Dr Paul Min)
 
 Warm regards,
 Linda Billau, Instructor
-${org}
-
-────────────────────────────────────────
-© 2025 Hanjo. All rights reserved.
-SEOKMUN™ and SEOKMUN HOHEUP™ are trademarks of Hanjo.`;
+${org}`;
 }
 
 function generateL5CompleteEmail(m, conductorName, sessionDate, org) {
@@ -5996,11 +5984,7 @@ cc: Cheon-Yeon (Dr Paul Min)
 
 Warm regards,
 Linda Billau, Instructor
-${org}
-
-────────────────────────────────────────
-© 2025 Hanjo. All rights reserved.
-SEOKMUN™ and SEOKMUN HOHEUP™ are trademarks of Hanjo.`;
+${org}`;
 }
 
 function generateBellyMassageEmail(m, conductorName, sessionDate, org) {
@@ -6053,11 +6037,7 @@ cc: Cheon-Yeon (Dr Paul Min)
 
 Warm regards,
 Linda Billau, Instructor
-${org}
-
-────────────────────────────────────────
-© 2025 Hanjo. All rights reserved.
-SEOKMUN™ and SEOKMUN HOHEUP™ are trademarks of Hanjo.`;
+${org}`;
 }
 
 function generateL4SojucheonEmail(m, conductorName, sessionDate, org) {
@@ -6088,11 +6068,7 @@ cc: Cheon-Yeon (Dr Paul Min)
 
 Warm regards,
 Linda Billau, Instructor
-${org}
-
-────────────────────────────────────────
-© 2025 Hanjo. All rights reserved.
-SEOKMUN™ and SEOKMUN HOHEUP™ are trademarks of Hanjo.`;
+${org}`;
 }
 
 function generateL4TwoMinEmail(m, conductorName, sessionDate, org) {
@@ -6125,11 +6101,7 @@ cc: Cheon-Yeon (Dr Paul Min)
 
 Warm regards,
 Linda Billau, Instructor
-${org}
-
-────────────────────────────────────────
-© 2025 Hanjo. All rights reserved.
-SEOKMUN™ and SEOKMUN HOHEUP™ are trademarks of Hanjo.`;
+${org}`;
 }
 
 function generateL3DaemaekEmail(m, conductorName, sessionDate, org) {
@@ -6162,11 +6134,7 @@ cc: Cheon-Yeon (Dr Paul Min)
 
 Warm regards,
 Linda Billau, Instructor
-${org}
-
-────────────────────────────────────────
-© 2025 Hanjo. All rights reserved.
-SEOKMUN™ and SEOKMUN HOHEUP™ are trademarks of Hanjo.`;
+${org}`;
 }
 
 function generateL3TwoMinEmail(m, conductorName, sessionDate, org) {
@@ -6189,11 +6157,7 @@ cc: Cheon-Yeon (Dr Paul Min)
 
 Warm regards,
 Linda Billau, Instructor
-${org}
-
-────────────────────────────────────────
-© 2025 Hanjo. All rights reserved.
-SEOKMUN™ and SEOKMUN HOHEUP™ are trademarks of Hanjo.`;
+${org}`;
 }
 
 function generateCheckupResultEmail(m, r, levelData, conductorName, sessionDate, org) {
@@ -6207,7 +6171,7 @@ Your Seokmun Hoheup Practice checkup has been completed.
 
 Checkup Date: ${sessionDate}
 Assessed by: Grand Master ${conductorName}
-Level: ${levelName}
+Level: ${r.level_assessed} — ${levelName}
 
 All remain the same.${notesBlock}
 ${m.flag_one_on_one?'\nA one-on-one session has been recommended. Please contact us to arrange a time.\n':''}
@@ -6215,35 +6179,35 @@ cc: Cheon-Yeon (Dr Paul Min)
 
 Warm regards,
 Linda Billau, Instructor
-${org}
-
-────────────────────────────────────────
-© 2025 Hanjo. All rights reserved.
-SEOKMUN™ and SEOKMUN HOHEUP™ are trademarks of Hanjo.`;
+${org}`;
   }
 
   if (r.outcome === 'progress') {
     const pct = r.progress_pct != null ? r.progress_pct : '';
     const acuBlock = r.acu_point ? `\nFocus Point: ${r.acu_point}\n` : '';
     const meridianKey = ACU_POINT_MERIDIAN[r.acu_point];
-    const imgBlock = meridianKey ? `\n<img src="${MERIDIAN_IMAGES[meridianKey]}" alt="${meridianKey === 'conception' ? 'Im-maek Conception Meridian' : 'Governor Meridian'}" style="max-width:320px;margin:12px 0;display:block">\n` : '';
+    const meridianUrls = {
+      conception: 'https://seokmunlb.github.io/seokmun-app/conception-meridian.jpg',
+      governor: 'https://seokmunlb.github.io/seokmun-app/governor-meridian.jpg'
+    };
+    const meridianNames = {
+      conception: 'Im-maek (Conception Meridian)',
+      governor: 'The Governor Meridian'
+    };
+    const imgBlock = meridianKey ? `\nMeridian Diagram: ${meridianNames[meridianKey]}\n${meridianUrls[meridianKey]}\n` : '';
     return `Dear ${m.first_name},
 
 Your Seokmun Hoheup Practice checkup has been completed.
 
 Checkup Date: ${sessionDate}
 Assessed by: Grand Master ${conductorName}
-Level: ${levelName}${pct !== '' ? ` — ${pct}%` : ''}
+Level: ${r.level_assessed} — ${levelName}${pct !== '' ? ` — ${pct}%` : ''}
 ${acuBlock}${notesBlock}${imgBlock}
 cc: Cheon-Yeon (Dr Paul Min)
 
 Warm regards,
 Linda Billau, Instructor
-${org}
-
-────────────────────────────────────────
-© 2025 Hanjo. All rights reserved.
-SEOKMUN™ and SEOKMUN HOHEUP™ are trademarks of Hanjo.`;
+${org}`;
   }
 
   if (r.outcome === 'encouragement') {
@@ -6253,7 +6217,7 @@ Your Seokmun Hoheup Practice checkup has been completed.
 
 Checkup Date: ${sessionDate}
 Assessed by: Grand Master ${conductorName}
-Level: ${levelName}
+Level: ${r.level_assessed} — ${levelName}
 
 Your dedication to the practice is seen and appreciated. Each session, however it feels, is meaningful. Please continue — you are on the right path.${notesBlock}
 We will be in touch with some personal encouragement and support.
@@ -6262,11 +6226,7 @@ cc: Cheon-Yeon (Dr Paul Min)
 
 Warm regards,
 Linda Billau, Instructor
-${org}
-
-────────────────────────────────────────
-© 2025 Hanjo. All rights reserved.
-SEOKMUN™ and SEOKMUN HOHEUP™ are trademarks of Hanjo.`;
+${org}`;
   }
 
   if (r.outcome === 'schedule_oo1') {
@@ -6276,18 +6236,14 @@ Your Seokmun Hoheup Practice checkup has been completed.
 
 Checkup Date: ${sessionDate}
 Assessed by: Grand Master ${conductorName}
-Level: ${levelName}
+Level: ${r.level_assessed} — ${levelName}
 
 A one-on-one session with the Master has been recommended. We will be in touch to schedule a time that works for you.${notesBlock}
 cc: Cheon-Yeon (Dr Paul Min)
 
 Warm regards,
 Linda Billau, Instructor
-${org}
-
-────────────────────────────────────────
-© 2025 Hanjo. All rights reserved.
-SEOKMUN™ and SEOKMUN HOHEUP™ are trademarks of Hanjo.`;
+${org}`;
   }
 
   if (r.outcome === 'level_back') {
@@ -6297,18 +6253,14 @@ Your Seokmun Hoheup Practice checkup has been completed.
 
 Checkup Date: ${sessionDate}
 Assessed by: Grand Master ${conductorName}
-Level: ${levelName}
+Level: ${r.level_assessed} — ${levelName}
 
 You have been asked to return to Level ${r.level_assessed} to deepen your foundation before advancing.${notesBlock}
 cc: Cheon-Yeon (Dr Paul Min)
 
 Warm regards,
 Linda Billau, Instructor
-${org}
-
-────────────────────────────────────────
-© 2025 Hanjo. All rights reserved.
-SEOKMUN™ and SEOKMUN HOHEUP™ are trademarks of Hanjo.`;
+${org}`;
   }
 
   // Default fallback
@@ -6318,17 +6270,13 @@ Your Seokmun Hoheup Practice checkup has been completed.
 
 Checkup Date: ${sessionDate}
 Assessed by: Grand Master ${conductorName}
-Level: ${levelName}
+Level: ${r.level_assessed} — ${levelName}
 ${notesBlock}
 cc: Cheon-Yeon (Dr Paul Min)
 
 Warm regards,
 Linda Billau, Instructor
-${org}
-
-────────────────────────────────────────
-© 2025 Hanjo. All rights reserved.
-SEOKMUN™ and SEOKMUN HOHEUP™ are trademarks of Hanjo.`;
+${org}`;
 }
 
 function generateLevelDownEmail(m, r, downLevel, conductorName, sessionDate, org) {
@@ -6385,11 +6333,7 @@ cc: Cheon-Yeon (Dr Paul Min)
 
 Warm regards,
 Linda Billau, Instructor
-${org}
-
-────────────────────────────────────────
-© 2025 Hanjo. All rights reserved.
-SEOKMUN™ and SEOKMUN HOHEUP™ are trademarks of Hanjo.`;
+${org}`;
 }
 
 function generateLevelUpEmail(m, r, newLevel, conductorName, sessionDate, org) {
@@ -6435,11 +6379,7 @@ Please connect with us to schedule a time to meet online — to answer any quest
 
 Warmly,
 Linda Billau — lbillau@yahoo.com
-Master Cheon Yeon (Dr. Paul Min) — illusion1177@me.com
-
-────────────────────────────────────────
-© 2025 Hanjo. All rights reserved.
-SEOKMUN™ and SEOKMUN HOHEUP™ are trademarks of Hanjo.`;
+Master Cheon Yeon (Dr. Paul Min) — illusion1177@me.com`;
   }
 
   if (toLevelNum === 9) {
@@ -6466,11 +6406,7 @@ POSTURE NOTES
 ${newLevel?.posture_sheet_url?`Level 9 Haenggong Sheet:\n${newLevel.posture_sheet_url}\n\n`:''}Please let us know if you have any questions or would like help with the practice.
 
 Warmly,
-${org}
-
-────────────────────────────────────────
-© 2025 Hanjo. All rights reserved.
-SEOKMUN™ and SEOKMUN HOHEUP™ are trademarks of Hanjo.`;
+${org}`;
   }
 
   if (toLevelNum === 8) {
@@ -6491,11 +6427,7 @@ Recite mentally, silently with a fervent heart, briefly yet powerfully, 3 times 
 ${newLevel?.posture_sheet_url?`Level 8 Haenggong Sheet:\n${newLevel.posture_sheet_url}\n\n`:''}Please let us know if you have any questions or would like help with the practice.
 
 Warmly,
-${org}
-
-────────────────────────────────────────
-© 2025 Hanjo. All rights reserved.
-SEOKMUN™ and SEOKMUN HOHEUP™ are trademarks of Hanjo.`;
+${org}`;
   }
 
   if (toLevelNum === 7) {
@@ -6522,11 +6454,7 @@ POSTURE NOTES
 ${newLevel?.posture_sheet_url?`Level 7 Haenggong Sheet:\n${newLevel.posture_sheet_url}\n\n`:''}Please let us know if you have any questions or would like help with the new postures.
 
 Warmly,
-${org}
-
-────────────────────────────────────────
-© 2025 Hanjo. All rights reserved.
-SEOKMUN™ and SEOKMUN HOHEUP™ are trademarks of Hanjo.`;
+${org}`;
   }
 
   if (toLevelNum === 6) {
@@ -6549,11 +6477,7 @@ POSTURE NOTES
 ${newLevel?.posture_sheet_url?`Level 6 Haenggong Sheet:\n${newLevel.posture_sheet_url}\n\n`:''}Please let us know if you have any questions or would like help with the new postures.
 
 Warmly,
-${org}
-
-────────────────────────────────────────
-© 2025 Hanjo. All rights reserved.
-SEOKMUN™ and SEOKMUN HOHEUP™ are trademarks of Hanjo.`;
+${org}`;
   }
 
   if (toLevelNum === 5) {
@@ -6580,11 +6504,7 @@ POSTURE NOTES
 ${newLevel?.posture_sheet_url?`Level 5 Haenggong Sheet:\n${newLevel.posture_sheet_url}\n\n`:''}Please let us know if you have any questions or would like help with the new postures.
 
 Warmly,
-${org}
-
-────────────────────────────────────────
-© 2025 Hanjo. All rights reserved.
-SEOKMUN™ and SEOKMUN HOHEUP™ are trademarks of Hanjo.`;
+${org}`;
   }
 
   if (toLevelNum === 4) {
@@ -6613,11 +6533,7 @@ Breathing Posture: Seated
 ${newLevel?.posture_sheet_url?`Level 4 Haenggong Sheet:\n${newLevel.posture_sheet_url}\n\n`:''}Please let us know if you have any questions or would like help with the new postures.
 
 Warmly,
-${org}
-
-────────────────────────────────────────
-© 2025 Hanjo. All rights reserved.
-SEOKMUN™ and SEOKMUN HOHEUP™ are trademarks of Hanjo.`;
+${org}`;
   }
 
   if (toLevelNum === 3) {
@@ -6673,11 +6589,7 @@ Warmly,
 Master Cheon-Yeon (Dr. Paul Min) — illusion1177@me.com
 Ben Kang — cheongbongdan1@gmail.com
 Malinda Morgan — malindamorga@gmail.com
-Linda Billau — lbillau@yahoo.com
-
-────────────────────────────────────────
-© 2025 Hanjo. All rights reserved.
-SEOKMUN™ and SEOKMUN HOHEUP™ are trademarks of Hanjo.`;
+Linda Billau — lbillau@yahoo.com`;
   }
 
   return `Dear ${m.first_name},
@@ -6697,11 +6609,7 @@ cc: Cheon-Yeon (Dr Paul Min)
 
 Warm regards,
 Linda Billau, Instructor
-${org}
-
-────────────────────────────────────────
-© 2025 Hanjo. All rights reserved.
-SEOKMUN™ and SEOKMUN HOHEUP™ are trademarks of Hanjo.`;
+${org}`;
 }
 
 function generateAbsentStandardEmail(m, period, loc, org) {
@@ -7129,19 +7037,20 @@ async function loadLevelReport() {
   const level = document.getElementById('rpt-level').value;
   const status = document.getElementById('rpt-status').value;
   const only2min = document.getElementById('rpt-2min')?.checked || false;
+  const locationFilter = document.getElementById('rpt-location')?.value || '';
 
   const { data, error } = await SB.from('v_members')
-    .select('first_name,last_name,email,current_level,level_name,level_milestone,location_name,status')
+    .select('first_name,last_name,email,current_level,level_name,level_milestone,location_name,location_id,status')
     .order('current_level')
     .order('last_name');
 
   if (error) { alert('Error: ' + error.message); return; }
 
-  // Filter client-side for simplicity
   let filtered = (data||[]);
   if (level) filtered = filtered.filter(m => m.current_level === parseInt(level));
   if (status) filtered = filtered.filter(m => m.status === status);
   if (only2min) filtered = filtered.filter(m => m.level_milestone === '2min_rotation');
+  if (locationFilter) filtered = filtered.filter(m => m.location_id === locationFilter);
 
   const tbody = document.getElementById('level-tbody');
   const tbl = document.getElementById('level-tbl');
