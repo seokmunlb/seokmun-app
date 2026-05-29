@@ -267,6 +267,7 @@ textarea{resize:vertical;min-height:68px}
     <div class="ni" onclick="nav('levelups')" data-p="levelups"><span class="ni-ic">▲</span><span>Level-Ups</span><span class="nbadge" id="nb-lu">0</span></div>
     <div class="ni" onclick="nav('trials')" data-p="trials"><span class="ni-ic">◌</span><span>Trials</span><span class="nbadge" id="nb-tr">0</span></div>
     <div class="ni" onclick="nav('group-review')" data-p="group-review"><span class="ni-ic">◑</span><span>Group Review</span><span class="nbadge" id="nb-gr">0</span></div>
+    <div class="ni" onclick="nav('meetings')" data-p="meetings"><span class="ni-ic">◈</span><span>Meeting Log</span></div>
     <div class="ni" onclick="nav('scripts')" data-p="scripts"><span class="ni-ic">▤</span><span>Class Scripts</span></div>
     <div class="ns">Communications</div>
     <div class="ni" onclick="nav('absent')" data-p="absent"><span class="ni-ic">✉</span><span>Absent Emails</span></div>
@@ -819,6 +820,63 @@ I have read and understood this waiver and agree freely and voluntarily.</div>
 </div>
 
 <!-- ══ TRIALS ══ -->
+<!-- ══ MEETING LOG ══ -->
+<div id="page-meetings" class="page">
+  <div class="ph"><div><div class="pt">Meeting Log</div><div class="ps">Log 1:1 sessions, phone calls and member meetings</div></div></div>
+  <div class="g2">
+    <div class="card">
+      <div class="ch"><span class="ct">Log a Meeting</span></div>
+      <div class="cb" style="display:flex;flex-direction:column;gap:10px">
+        <div class="fg">
+          <label>Member *</label>
+          <input id="mtg-member-search" placeholder="Search by name…" oninput="searchMeetingMember()" autocomplete="off">
+          <div id="mtg-member-dropdown" style="display:none;position:absolute;background:var(--w);border:1px solid var(--bg3);border-radius:var(--r);box-shadow:var(--sh2);z-index:100;min-width:280px;max-height:180px;overflow-y:auto"></div>
+          <input type="hidden" id="mtg-member-id">
+        </div>
+        <div class="fr2">
+          <div class="fg"><label>Date *</label><input type="date" id="mtg-date"></div>
+          <div class="fg"><label>Time</label><input type="time" id="mtg-time"></div>
+        </div>
+        <div class="fg">
+          <label>Meeting Type</label>
+          <select id="mtg-type">
+            <option value="one_on_one">1:1 Session (online/in-person)</option>
+            <option value="phone_call">Phone Call</option>
+            <option value="email_followup">Email Follow-Up</option>
+            <option value="intro_class">Intro Class</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+        <div class="fg"><label>Staff (who met with them)</label>
+          <select id="mtg-staff"></select>
+        </div>
+        <div class="fg"><label>Notes</label><textarea id="mtg-notes" rows="4" placeholder="What was discussed, any health updates, follow-up needed…"></textarea></div>
+        <div class="fg"><label>Health / Modification Notes</label><textarea id="mtg-health" rows="2" placeholder="Any physical concerns or modifications noted…"></textarea></div>
+        <button class="btn btn-p" onclick="logMeeting()">✦ Save Meeting</button>
+        <div id="mtg-success" style="display:none" class="alert a-s">✓ Meeting logged.</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="ch"><span class="ct">Recent Meetings</span></div>
+      <div class="cb">
+        <div style="display:flex;gap:8px;margin-bottom:12px">
+          <input id="mtg-filter" placeholder="Filter by member name…" style="flex:1;padding:7px 10px;font-size:13px;border:1px solid var(--bg3);border-radius:var(--r)" oninput="filterMeetings()">
+          <select id="mtg-type-filter" onchange="filterMeetings()" style="padding:7px 10px;font-size:13px;border:1px solid var(--bg3);border-radius:var(--r)">
+            <option value="">All types</option>
+            <option value="one_on_one">1:1 Session</option>
+            <option value="phone_call">Phone Call</option>
+            <option value="email_followup">Email Follow-Up</option>
+            <option value="intro_class">Intro Class</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+        <div id="mtg-list" style="display:flex;flex-direction:column;gap:10px"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div id="page-trials" class="page">
   <div class="ph"><div><div class="pt">Trial Memberships</div><div class="ps">All trial members — conversion tracking</div></div></div>
   <div class="sr" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
@@ -2630,6 +2688,7 @@ function nav(page) {
     session: () => { sessTab('setup'); loadSessionHistory(); },
     levelups: () => { luTab('invite'); loadLevelUpInviteQueue(); },
     trials: loadTrials,
+    meetings: () => { loadMeetings(); populateMeetingStaff(); setDefaultMeetingDate(); },
     'group-review': loadGroupReview,
     absent: loadAbsentMemberList,
     'intro-invite': () => { document.getElementById('ii-date').value = todayLocal(); },
@@ -4422,6 +4481,131 @@ async function loadAllLevelUps() {
 //  TRIALS
 // ══════════════════════════════════════════════════════════
 let trialsData = [];
+
+// ══════════════════════════════════════════════════════════
+//  MEETING LOG
+// ══════════════════════════════════════════════════════════
+let meetingsData = [];
+
+function setDefaultMeetingDate() {
+  const el = document.getElementById('mtg-date');
+  if (el && !el.value) el.value = todayLocal();
+}
+
+function populateMeetingStaff() {
+  const sel = document.getElementById('mtg-staff');
+  if (!sel) return;
+  sel.innerHTML = staffList.map(s =>
+    `<option value="${s.id}" ${s.id === currentStaff?.id ? 'selected' : ''}>${s.first_name} ${s.last_name}</option>`
+  ).join('');
+}
+
+async function searchMeetingMember() {
+  const q = document.getElementById('mtg-member-search').value.trim().toLowerCase();
+  const dropdown = document.getElementById('mtg-member-dropdown');
+  if (q.length < 2) { dropdown.style.display = 'none'; return; }
+
+  const { data } = await SB.from('members')
+    .select('id,first_name,last_name')
+    .or(`first_name.ilike.%${q}%,last_name.ilike.%${q}%`)
+    .in('status',['active','trial','hold','inactive'])
+    .limit(8);
+
+  if (!data?.length) { dropdown.style.display = 'none'; return; }
+  dropdown.style.display = 'block';
+  dropdown.innerHTML = (data||[]).map(m => `
+    <div onclick="selectMeetingMember('${m.id}','${m.first_name} ${m.last_name}')"
+         style="padding:8px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--bg2)"
+         onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background=''">
+      ${m.first_name} ${m.last_name}
+    </div>`).join('');
+}
+
+function selectMeetingMember(id, name) {
+  document.getElementById('mtg-member-id').value = id;
+  document.getElementById('mtg-member-search').value = name;
+  document.getElementById('mtg-member-dropdown').style.display = 'none';
+}
+
+async function logMeeting() {
+  const memberId = document.getElementById('mtg-member-id').value;
+  const date = document.getElementById('mtg-date').value;
+  const time = document.getElementById('mtg-time').value || null;
+  const type = document.getElementById('mtg-type').value;
+  const staffId = document.getElementById('mtg-staff').value;
+  const notes = document.getElementById('mtg-notes').value.trim() || null;
+  const health = document.getElementById('mtg-health').value.trim() || null;
+
+  if (!memberId) { alert('Please select a member.'); return; }
+  if (!date) { alert('Please enter a date.'); return; }
+
+  const { error } = await SB.from('one_on_one_sessions').insert({
+    member_id: memberId,
+    staff_id: staffId || currentStaff?.id,
+    scheduled_date: date,
+    completed_date: date,
+    meeting_type: type,
+    meeting_time: time,
+    notes,
+    health_update: health
+  });
+
+  if (error) { alert('Error saving: ' + error.message); return; }
+
+  // Clear form
+  document.getElementById('mtg-member-id').value = '';
+  document.getElementById('mtg-member-search').value = '';
+  document.getElementById('mtg-notes').value = '';
+  document.getElementById('mtg-health').value = '';
+  document.getElementById('mtg-time').value = '';
+
+  const successEl = document.getElementById('mtg-success');
+  successEl.style.display = 'block';
+  setTimeout(() => successEl.style.display = 'none', 3000);
+
+  loadMeetings();
+}
+
+async function loadMeetings() {
+  const { data } = await SB.from('one_on_one_sessions')
+    .select('*, members(first_name,last_name), staff(first_name,last_name)')
+    .order('completed_date', {ascending: false})
+    .limit(50);
+
+  meetingsData = data || [];
+  filterMeetings();
+}
+
+function filterMeetings() {
+  const q = document.getElementById('mtg-filter')?.value.toLowerCase() || '';
+  const typeFilter = document.getElementById('mtg-type-filter')?.value || '';
+
+  const typeLabels = {
+    one_on_one: '1:1 Session', phone_call: 'Phone Call',
+    email_followup: 'Email Follow-Up', intro_class: 'Intro Class', other: 'Other'
+  };
+
+  let filtered = meetingsData;
+  if (q) filtered = filtered.filter(m =>
+    `${m.members?.first_name} ${m.members?.last_name}`.toLowerCase().includes(q)
+  );
+  if (typeFilter) filtered = filtered.filter(m => m.meeting_type === typeFilter);
+
+  const list = document.getElementById('mtg-list');
+  list.innerHTML = filtered.length ? filtered.map(m => `
+    <div style="border:0.5px solid var(--bg3);border-radius:var(--r);padding:12px">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">
+        <div>
+          <strong style="font-size:14px">${m.members?.first_name||''} ${m.members?.last_name||''}</strong>
+          <span class="badge b-trial" style="margin-left:8px;font-size:11px">${typeLabels[m.meeting_type]||m.meeting_type}</span>
+        </div>
+        <div style="font-size:12px;color:var(--ink3)">${fmtDate(m.completed_date)}${m.meeting_time?' '+m.meeting_time:''}</div>
+      </div>
+      <div style="font-size:12px;color:var(--ink3);margin-bottom:4px">With: ${m.staff?.first_name||''} ${m.staff?.last_name||''}</div>
+      ${m.notes?`<div style="font-size:13px;margin-top:6px">${escHtml(m.notes)}</div>`:''}
+      ${m.health_update?`<div style="font-size:12px;color:var(--ink3);margin-top:4px;font-style:italic">Health: ${escHtml(m.health_update)}</div>`:''}
+    </div>`).join('') : '<div style="color:var(--ink3);font-size:13px;padding:12px">No meetings logged yet.</div>';
+}
 
 async function loadTrials() {
   if (!SB) return;
