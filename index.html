@@ -3974,11 +3974,18 @@ async function saveSession() {
     if (r.outcome === 'encouragement') flagUpdate.encourage_emails = true;
     if (r.outcome === 'schedule_oo1') flagUpdate.flag_one_on_one = true;
     if (r.outcome === 'level_up') {
-      flagUpdate.current_level = r.level_assessed + 1;
-      flagUpdate.level_milestone = null; // clear milestone on level up
+      // Get the original level_assessed before any previous saves changed current_level
+      const { data: orig } = await SB.from('checkup_results')
+        .select('level_assessed').eq('session_id', currentSessionId).eq('member_id', r.member_id).single();
+      const originalLevel = orig?.level_assessed ?? r.level_assessed;
+      flagUpdate.current_level = originalLevel + 1;
+      flagUpdate.level_milestone = null;
     }
     if (r.outcome === 'level_down' && r.level_assessed > 1) {
-      flagUpdate.current_level = r.level_assessed - 1;
+      const { data: orig } = await SB.from('checkup_results')
+        .select('level_assessed').eq('session_id', currentSessionId).eq('member_id', r.member_id).single();
+      const originalLevel = orig?.level_assessed ?? r.level_assessed;
+      if (originalLevel > 1) flagUpdate.current_level = originalLevel - 1;
       flagUpdate.level_milestone = null;
     }
     if (r.outcome === 'l3_daemaek') flagUpdate.level_milestone = '2min_rotation';
