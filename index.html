@@ -231,6 +231,24 @@ textarea{resize:vertical;min-height:68px}
 </head>
 <body>
 
+<!-- ══════════ INVITE / SET PASSWORD ══════════ -->
+<div id="invite-screen" style="display:none;position:fixed;inset:0;background:var(--bg1);align-items:center;justify-content:center;z-index:9999">
+  <div class="setup-box" style="max-width:400px">
+    <div class="setup-logo">Seokmun Hoheup Practice</div>
+    <div style="font-size:14px;color:var(--ink2);margin-bottom:20px;text-align:center">Welcome! Please set your password to access your member portal.</div>
+    <div style="margin-bottom:12px">
+      <label style="font-size:12px;color:var(--ink3)">New Password</label>
+      <input type="password" id="invite-password" class="inp" placeholder="Choose a password" style="width:100%;margin-top:4px">
+    </div>
+    <div style="margin-bottom:16px">
+      <label style="font-size:12px;color:var(--ink3)">Confirm Password</label>
+      <input type="password" id="invite-password2" class="inp" placeholder="Confirm password" style="width:100%;margin-top:4px">
+    </div>
+    <div id="invite-err" style="color:var(--red);font-size:13px;margin-bottom:10px;display:none"></div>
+    <button class="btn btn-primary" onclick="acceptInvite()" style="width:100%">Set Password & Sign In</button>
+  </div>
+</div>
+
 <!-- ══════════ SETUP / SIGN-IN ══════════ -->
 <div id="setup">
   <div class="setup-box">
@@ -250,6 +268,75 @@ textarea{resize:vertical;min-height:68px}
 </div>
 
 <!-- ══════════ APP SHELL ══════════ -->
+<!-- ══ MEMBER PORTAL ══ -->
+<div id="member-portal" style="display:none;min-height:100vh;background:var(--bg1);font-family:var(--font)">
+  <div style="max-width:700px;margin:0 auto;padding:24px 16px">
+    <!-- Header -->
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;padding-bottom:16px;border-bottom:1px solid var(--bg3)">
+      <div>
+        <div style="font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--ink3);margin-bottom:4px">Seokmun Hoheup Practice</div>
+        <div style="font-size:20px;font-weight:600" id="mp-name">Member Portal</div>
+      </div>
+      <button class="btn btn-sm" onclick="signOut()">Sign out</button>
+    </div>
+
+    <!-- Profile card -->
+    <div class="card" style="margin-bottom:16px">
+      <div class="ch"><span class="ct">My Profile</span><button class="btn btn-sm" onclick="toggleMpEdit()">Edit</button></div>
+      <div class="cb">
+        <div id="mp-profile-view">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px 24px;font-size:14px">
+            <div><span style="color:var(--ink3)">Level</span><br><strong id="mp-level">—</strong></div>
+            <div><span style="color:var(--ink3)">Location</span><br><span id="mp-location">—</span></div>
+            <div><span style="color:var(--ink3)">Email</span><br><span id="mp-email">—</span></div>
+            <div><span style="color:var(--ink3)">Phone</span><br><span id="mp-phone">—</span></div>
+            <div><span style="color:var(--ink3)">Address</span><br><span id="mp-address">—</span></div>
+            <div><span style="color:var(--ink3)">Status</span><br><span id="mp-status">—</span></div>
+          </div>
+        </div>
+        <div id="mp-profile-edit" style="display:none">
+          <div class="fr2">
+            <div class="fg"><label>First Name</label><input id="mp-edit-first"></div>
+            <div class="fg"><label>Last Name</label><input id="mp-edit-last"></div>
+          </div>
+          <div class="fg"><label>Preferred Name</label><input id="mp-edit-preferred" placeholder="How you'd like to be addressed"></div>
+          <div class="fg"><label>Phone</label><input id="mp-edit-phone" type="tel"></div>
+          <div class="fg"><label>Address</label><input id="mp-edit-addr1" placeholder="Street address"></div>
+          <div class="fr2">
+            <div class="fg"><label>City</label><input id="mp-edit-city"></div>
+            <div class="fg"><label>State</label><input id="mp-edit-state" placeholder="MN"></div>
+          </div>
+          <div class="fr2">
+            <div class="fg"><label>Zip</label><input id="mp-edit-zip"></div>
+            <div class="fg"><label>Country</label><input id="mp-edit-country" placeholder="US"></div>
+          </div>
+          <div style="display:flex;gap:8px;margin-top:8px">
+            <button class="btn btn-p" onclick="saveMpProfile()">Save</button>
+            <button class="btn" onclick="toggleMpEdit()">Cancel</button>
+          </div>
+          <div id="mp-save-msg" style="display:none;margin-top:8px" class="alert a-s">✓ Profile updated.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Level info card -->
+    <div class="card" style="margin-bottom:16px">
+      <div class="ch"><span class="ct">My Practice Level</span></div>
+      <div class="cb" id="mp-level-info">
+        <div style="color:var(--ink3);font-size:13px">Loading…</div>
+      </div>
+    </div>
+
+    <!-- Checkup history -->
+    <div class="card" style="margin-bottom:16px">
+      <div class="ch"><span class="ct">My Checkup History</span></div>
+      <div class="cb" id="mp-checkups">
+        <div style="color:var(--ink3);font-size:13px">Loading…</div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="shell" id="app" style="display:none">
 <nav class="sb">
   <div class="logo">
@@ -275,10 +362,7 @@ textarea{resize:vertical;min-height:68px}
     <div class="ni" onclick="nav('singleday-followup')" data-p="singleday-followup"><span class="ni-ic">◉</span><span>Single Day Follow-Up</span></div>
     <div class="ni" onclick="nav('broadcast')" data-p="broadcast"><span class="ni-ic">◻</span><span>Broadcast</span></div>
     <div class="ni" onclick="nav('comms')" data-p="comms"><span class="ni-ic">◫</span><span>Comms Log</span></div>
-    <div class="ns">Fees</div>
-    <div class="ni" onclick="nav('fees')" data-p="fees"><span class="ni-ic">$</span><span>Fee Overview</span><span class="nbadge" id="nb-fee">0</span></div>
     <div class="ni" onclick="nav('reports')" data-p="reports"><span class="ni-ic">◧</span><span>Reports</span></div>
-    <div class="ni" onclick="nav('payments')" data-p="payments"><span class="ni-ic">✓</span><span>Record Payment</span></div>
     <div class="ni" onclick="nav('fee-report')" data-p="fee-report"><span class="ni-ic">≡</span><span>Fee Report</span></div>
     <div class="ns">Admin</div>
     <div class="ni" onclick="nav('levels-admin')" data-p="levels-admin"><span class="ni-ic">◐</span><span>Levels &amp; Tiers</span></div>
@@ -311,7 +395,6 @@ textarea{resize:vertical;min-height:68px}
     <div class="stat" onclick="filterNav('members','active')"><div class="slbl">Active</div><div class="sval" id="ds-active" style="color:var(--sage)">—</div><div class="ssub">regular members</div></div>
     <div class="stat" onclick="nav('trials')"><div class="slbl">Trials</div><div class="sval" id="ds-trial" style="color:var(--gold)">—</div><div class="ssub">free trial</div></div>
     <div class="stat" onclick="nav('onboard')"><div class="slbl">Onboarding</div><div class="sval" id="ds-ob" style="color:var(--sky)">—</div><div class="ssub">steps pending</div></div>
-    <div class="stat" onclick="nav('fees')"><div class="slbl">Fee Overdue</div><div class="sval" id="ds-fee" style="color:var(--rust)">—</div><div class="ssub">members</div></div>
   </div>
   <div class="g2" style="margin-bottom:18px">
     <div class="card">
@@ -587,30 +670,6 @@ textarea{resize:vertical;min-height:68px}
                 <option value="14">Level 14 — Yangshin</option>
               </select>
             </div>
-          </div>
-
-          <div class="sdiv">Fees</div>
-          <div class="fr2">
-            <div class="fg"><label>Fee Tier</label>
-              <select id="ob-fee-tier">
-                <option value="standard">Standard</option>
-                <option value="reduced">Reduced</option>
-                <option value="supporter">Supporter</option>
-                <option value="custom">Custom amount</option>
-                <option value="waived">Waived (free)</option>
-              </select>
-            </div>
-            <div class="fg"><label>Billing Frequency</label>
-              <select id="ob-fee-freq">
-                <option value="monthly">Monthly</option>
-                <option value="quarterly">Quarterly</option>
-                <option value="member_choice">Member choice</option>
-              </select>
-            </div>
-          </div>
-          <div id="ob-custom-amt-row" class="fg" style="display:none">
-            <label>Custom Monthly Amount ($)</label>
-            <input id="ob-custom-amt" type="number" step="0.01" min="0" placeholder="0.00">
           </div>
 
           <div class="sdiv">Communication Preferences</div>
@@ -2071,7 +2130,6 @@ I have read and understood this waiver and agree freely and voluntarily.</div>
   </div>
 </div>
 
-<!-- ══ FEES OVERVIEW ══ -->
 <div id="page-reports" class="page">
   <div class="ph"><div><div class="pt">Reports</div><div class="ps">Member lists and data exports</div></div></div>
 
@@ -2209,103 +2267,6 @@ I have read and understood this waiver and agree freely and voluntarily.</div>
 
 </div>
 
-<div id="page-fees" class="page">
-  <div class="ph">
-    <div><div class="pt">Fee Overview</div><div class="ps">Voluntary sliding scale — fees are always optional and can be globally waived</div></div>
-    <div class="brow">
-      <button class="btn btn-sm" onclick="nav('payments')">Record Payment</button>
-      <button class="btn btn-g" onclick="showGlobalFreeModal()">Set All Free</button>
-    </div>
-  </div>
-  <div id="fees-global-banner" class="alert a-s" style="display:none;margin-bottom:16px">
-    <strong>Global free mode is ON.</strong> All members are treated as waived regardless of their individual tier. You can turn this off in Settings.
-  </div>
-  <div class="sr">
-    <input id="fq" placeholder="Search member…" oninput="loadFeeOverview()">
-    <select id="f-loc" onchange="loadFeeOverview()"><option value="">All locations</option></select>
-    <select id="f-overdue" onchange="loadFeeOverview()">
-      <option value="">All members</option>
-      <option value="overdue">Overdue only</option>
-      <option value="current">Current only</option>
-    </select>
-  </div>
-  <div class="card" style="overflow-x:auto">
-    <table class="tbl">
-      <thead><tr>
-        <th>Member</th><th>Location</th><th>Tier</th><th>Frequency</th>
-        <th>Status</th><th>Overdue Periods</th><th>Amount Owed</th>
-        <th>Last Payment</th><th>Paid YTD</th><th></th>
-      </tr></thead>
-      <tbody id="fees-tbody"></tbody>
-    </table>
-  </div>
-</div>
-
-<!-- ══ RECORD PAYMENT ══ -->
-<div id="page-payments" class="page">
-  <div class="ph"><div><div class="pt">Record Payment</div><div class="ps">Log a payment received from a member</div></div></div>
-  <div class="g2">
-    <div class="card">
-      <div class="ch"><span class="ct">Payment Details</span></div>
-      <div class="cb">
-        <div class="fg"><label>Member *</label><select id="pay-member" onchange="loadMemberBillingPeriods()"><option value="">Select member…</option></select></div>
-        <div class="fg"><label>Billing Period (optional)</label><select id="pay-period"><option value="">Not linked to a period</option></select></div>
-        <div id="pay-period-info" class="alert a-i" style="display:none;margin-bottom:14px"></div>
-        <div class="fr2">
-          <div class="fg"><label>Payment Method *</label><select id="pay-method"></select></div>
-          <div class="fg"><label>Amount ($) *</label><input id="pay-amount" type="number" step="0.01" min="0.01" placeholder="0.00"></div>
-        </div>
-        <div class="fg"><label>Payment Date *</label><input id="pay-date" type="date"></div>
-        <div class="fg"><label>Reference / Confirmation</label><input id="pay-ref" placeholder="Venmo note, check #, etc."></div>
-        <div class="fg"><label>Notes</label><textarea id="pay-notes" rows="2"></textarea></div>
-        <button class="btn btn-p" style="width:100%" onclick="recordPayment()">✦ Record Payment</button>
-        <div id="pay-result" style="margin-top:12px"></div>
-      </div>
-    </div>
-    <div class="card">
-      <div class="ch"><span class="ct">Create Billing Period</span></div>
-      <div class="cb">
-        <div class="alert a-i" style="margin-bottom:14px">Create a billing period for a member before recording payment, or record a payment without linking it to a period.</div>
-        <div class="fg"><label>Member</label><select id="bp-member"><option value="">Select member…</option></select></div>
-        <div class="fg"><label>Period Label</label><input id="bp-label" placeholder="e.g. March 2025 or Q1 2025"></div>
-        <div class="fr2">
-          <div class="fg"><label>Period Start</label><input id="bp-start" type="date"></div>
-          <div class="fg"><label>Period End</label><input id="bp-end" type="date"></div>
-        </div>
-        <div class="fg"><label>Due Date</label><input id="bp-due" type="date"></div>
-        <div class="fr2">
-          <div class="fg"><label>Fee Tier</label>
-            <select id="bp-tier">
-              <option value="standard">Standard</option><option value="reduced">Reduced</option>
-              <option value="supporter">Supporter</option><option value="custom">Custom</option>
-              <option value="waived">Waived</option>
-            </select>
-          </div>
-          <div class="fg"><label>Suggested Amount ($)</label><input id="bp-amount" type="number" step="0.01" min="0" placeholder="0.00"></div>
-        </div>
-        <div class="fg"><label>Member's Chosen Amount ($) <span style="color:var(--ink3);font-weight:400">(leave blank if same as suggested)</span></label><input id="bp-chose" type="number" step="0.01" min="0" placeholder="Member's choice"></div>
-        <button class="btn btn-s" style="width:100%" onclick="createBillingPeriod()">Create Billing Period</button>
-        <div id="bp-result" style="margin-top:12px"></div>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- ══ FEE REPORT ══ -->
-<div id="page-fee-report" class="page">
-  <div class="ph"><div><div class="pt">Fee Report</div><div class="ps">Monthly summary of billing and collections</div></div></div>
-  <div class="card" style="overflow-x:auto">
-    <table class="tbl">
-      <thead><tr>
-        <th>Month</th><th>Periods</th><th>Paid</th><th>Waived</th>
-        <th>Overdue</th><th>Suggested Total</th><th>Collected</th><th>Outstanding</th>
-      </tr></thead>
-      <tbody id="report-tbody"></tbody>
-    </table>
-  </div>
-</div>
-
-<!-- ══ LEVELS ADMIN ══ -->
 <div id="page-levels-admin" class="page">
   <div class="ph"><div><div class="pt">Levels &amp; Tiers</div><div class="ps">Edit level names, descriptions, and posture sheet URLs</div></div></div>
   <div class="alert a-i" style="margin-bottom:16px">Click any level row to edit its name, descriptions (Group 1 &amp; 2), what to expect, and posture sheet URL.</div>
@@ -2358,23 +2319,6 @@ I have read and understood this waiver and agree freely and voluntarily.</div>
       </div>
     </div>
     <div>
-      <div class="card" style="margin-bottom:16px">
-        <div class="ch"><span class="ct">Sliding Scale Fees</span></div>
-        <div class="cb">
-          <div class="alert a-i" style="margin-bottom:14px;font-size:12px">These are suggested amounts only. Members choose what they pay. Set to 0 if not yet decided. Turn on "globally free" to waive all members at once.</div>
-          <div class="fg"><label>Supporter Amount ($/month)</label><input id="cfg-supporter" type="number" step="0.01" min="0"></div>
-          <div class="fg"><label>Standard Amount ($/month)</label><input id="cfg-standard" type="number" step="0.01" min="0"></div>
-          <div class="fg"><label>Reduced Amount ($/month)</label><input id="cfg-reduced" type="number" step="0.01" min="0"></div>
-          <div class="sdiv">Global Free Mode</div>
-          <label class="cr"><input type="checkbox" id="cfg-global-free" onchange="toggleGlobalFree(this.checked)"><span>All fees globally waived (everyone practices free)</span></label>
-          <div class="fg" style="margin-top:10px"><label>Overdue Reminder Days (days after due date, blank = manual only)</label><input id="cfg-reminder" type="number" min="1" placeholder="e.g. 7"></div>
-          <button class="btn btn-p" style="margin-top:4px" onclick="saveFeeConfig()">Save Fee Settings</button>
-        </div>
-      </div>
-      <div class="card">
-        <div class="ch"><span class="ct">Payment Methods</span><button class="btn btn-sm" onclick="addPaymentMethod()">+ Add</button></div>
-        <div id="pm-list"></div>
-      </div>
     </div>
   </div>
 </div>
@@ -2487,7 +2431,6 @@ let currentEmailContext = null; // {comm_type, member_id, subject, body, ...}
 let editingLevelNum = null;
 let locations = [];
 let staffList = [];
-let paymentMethods = [];
 let orgConfig = {};
 let cachedMembers = [];
 
@@ -2529,35 +2472,93 @@ async function doSetup() {
   }
 }
 
+async function acceptInvite() {
+  const pw = document.getElementById('invite-password').value;
+  const pw2 = document.getElementById('invite-password2').value;
+  const errEl = document.getElementById('invite-err');
+  errEl.style.display = 'none';
+
+  if (!pw || pw.length < 6) {
+    errEl.textContent = 'Password must be at least 6 characters.';
+    errEl.style.display = 'block'; return;
+  }
+  if (pw !== pw2) {
+    errEl.textContent = 'Passwords do not match.';
+    errEl.style.display = 'block'; return;
+  }
+
+  try {
+    // Use saved credentials, or fall back to hardcoded project values
+    const url = localStorage.getItem('sb_url') || 'https://delnpwuubnrmixapyngm.supabase.co';
+    const key = localStorage.getItem('sb_key') || 'sb_publishable_MKj1BIdBoj7X55RmuEKRmQ_-x-OJ24u';
+
+    SB = supabase.createClient(url, key, {
+      auth: { persistSession: true, autoRefreshToken: true }
+    });
+
+    // supabase-js v2 picks up the invite token from the URL hash automatically
+    // We just need to update the password
+    const { error } = await SB.auth.updateUser({ password: pw });
+    if (error) throw error;
+
+    localStorage.setItem('sb_url', url);
+    localStorage.setItem('sb_key', key);
+
+    document.getElementById('invite-screen').style.display = 'none';
+    await initApp();
+  } catch(e) {
+    errEl.textContent = e.message || 'Error setting password. Try requesting a new invite.';
+    errEl.style.display = 'block';
+  }
+}
+
+let currentMember = null; // set when logged-in user is a member, not staff
+
 async function initApp() {
   const { data: { user } } = await SB.auth.getUser();
   if (!user) { document.getElementById('setup').style.display = 'flex'; return; }
 
+  // Check if user is staff
   const { data: staff } = await SB.from('staff').select('*').eq('auth_user_id', user.id).single();
   currentStaff = staff;
 
-  document.getElementById('uname').textContent =
-    staff ? `${staff.first_name} ${staff.last_name}` : user.email;
-  document.getElementById('urole').textContent =
-    staff ? staff.role.replace(/_/g,' ') : '';
+  if (!staff) {
+    // Check if user is a member
+    const { data: member } = await SB.from('members').select('*').eq('auth_user_id', user.id).single();
+    if (member) {
+      currentMember = member;
+      await initMemberPortal(member, user);
+      return;
+    }
+    // Unknown user — sign out
+    alert('No account found for this login. Please contact your instructor.');
+    await SB.auth.signOut();
+    location.reload();
+    return;
+  }
+
+  document.getElementById('uname').textContent = `${staff.first_name} ${staff.last_name}`;
+  document.getElementById('urole').textContent = staff.role.replace(/_/g,' ');
 
   document.getElementById('setup').style.display = 'none';
   document.getElementById('app').style.display = 'flex';
+
+  // Apply role-based nav restrictions
+  applyRoleNav(staff.role);
 
   const today = new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
   document.getElementById('dash-date').textContent = today;
 
   await Promise.all([
-    loadLocations(), loadStaff(), loadPaymentMethods(), loadOrgConfig()
+    loadLocations(), loadStaff(), loadOrgConfig()
   ]);
 
   populateLocationSelects();
   populateStaffSelects();
-  populatePayMethodSelect();
 
   // Set today's date on date fields
   const todayISO = todayLocal();
-  ['ob-join','ss-date','pay-date'].forEach(id => {
+  ['ob-join','ss-date'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.value = todayISO;
   });
@@ -2565,6 +2566,180 @@ async function initApp() {
 
   await renderDashboard();
   await updateBadges();
+}
+
+// ══════════════════════════════════════════════════════════
+//  MEMBER PORTAL
+// ══════════════════════════════════════════════════════════
+
+async function initMemberPortal(member, user) {
+  document.getElementById('setup').style.display = 'none';
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('member-portal').style.display = 'block';
+
+  // Set name
+  const displayName = member.preferred_name || member.first_name;
+  document.getElementById('mp-name').textContent = `Welcome, ${displayName}`;
+
+  // Load level info
+  const { data: levels } = await SB.from('practice_levels').select('*').order('level_number');
+  const myLevel = levels?.find(l => l.level_number === member.current_level);
+
+  // Profile view
+  document.getElementById('mp-level').textContent =
+    myLevel ? `Level ${myLevel.level_number} — ${myLevel.level_name}` : `Level ${member.current_level}`;
+  document.getElementById('mp-email').textContent = member.email || '—';
+  document.getElementById('mp-phone').textContent = member.phone || '—';
+  document.getElementById('mp-status').textContent = (member.status||'').replace(/_/g,' ');
+
+  // Location
+  if (member.location_id) {
+    const { data: loc } = await SB.from('locations').select('name').eq('id', member.location_id).single();
+    document.getElementById('mp-location').textContent = loc?.name || '—';
+  } else {
+    document.getElementById('mp-location').textContent = '—';
+  }
+
+  // Address
+  const addrParts = [member.address1, member.city, member.state, member.zip].filter(Boolean);
+  document.getElementById('mp-address').textContent = addrParts.join(', ') || '—';
+
+  // Milestone badge
+  let milestoneText = '';
+  if (member.level_milestone === '2min_rotation') {
+    milestoneText = ' · 2-min rotation';
+  }
+  document.getElementById('mp-level').textContent =
+    (myLevel ? `Level ${myLevel.level_number} — ${myLevel.level_name}` : `Level ${member.current_level}`) + milestoneText;
+
+  // Level info card
+  const levelEl = document.getElementById('mp-level-info');
+  if (myLevel) {
+    levelEl.innerHTML = `
+      <div style="margin-bottom:12px">
+        <div style="font-size:16px;font-weight:600;margin-bottom:4px">Level ${myLevel.level_number} — ${myLevel.level_name}</div>
+        ${myLevel.shimbeop ? `<div style="font-size:13px;color:var(--ink3);margin-bottom:8px;font-style:italic">"${myLevel.shimbeop}"</div>` : ''}
+        ${myLevel.description ? `<div style="font-size:13px">${myLevel.description}</div>` : ''}
+      </div>
+      ${myLevel.posture_sheet_url ? `<a href="${myLevel.posture_sheet_url}" target="_blank" class="btn btn-sm">📄 View Posture Sheet</a>` : ''}
+      ${member.chair_modification && myLevel.posture_sheet_chair_url ? `<a href="${myLevel.posture_sheet_chair_url}" target="_blank" class="btn btn-sm" style="margin-left:8px">📄 Chair Version</a>` : ''}
+      ${myLevel.video_url ? `<a href="${myLevel.video_url}" target="_blank" class="btn btn-sm" style="margin-left:8px">▶ Video</a>` : ''}
+    `;
+  } else {
+    levelEl.innerHTML = '<div style="color:var(--ink3);font-size:13px">Level information not available.</div>';
+  }
+
+  // Pre-fill edit form
+  document.getElementById('mp-edit-first').value = member.first_name || '';
+  document.getElementById('mp-edit-last').value = member.last_name || '';
+  document.getElementById('mp-edit-preferred').value = member.preferred_name || '';
+  document.getElementById('mp-edit-phone').value = member.phone || '';
+  document.getElementById('mp-edit-addr1').value = member.address1 || '';
+  document.getElementById('mp-edit-city').value = member.city || '';
+  document.getElementById('mp-edit-state').value = member.state || '';
+  document.getElementById('mp-edit-zip').value = member.zip || '';
+  document.getElementById('mp-edit-country').value = member.country || '';
+
+  // Load checkup history
+  await loadMpCheckups(member.id);
+}
+
+async function loadMpCheckups(memberId) {
+  const el = document.getElementById('mp-checkups');
+  const { data, error } = await SB.from('checkup_results')
+    .select('*, checkup_sessions(session_date, conductor_name)')
+    .eq('member_id', memberId)
+    .order('created_at', { ascending: false })
+    .limit(20);
+
+  if (error || !data?.length) {
+    el.innerHTML = '<div style="color:var(--ink3);font-size:13px">No checkup history yet.</div>';
+    return;
+  }
+
+  const outcomeLabels = {
+    start: 'Start', continue: 'Continue', progress: 'Progress',
+    encouragement: 'Encouragement', level_up: 'Level Up ▲', level_down: 'Level Down ▼',
+    schedule_oo1: '1:1 Scheduled', l3_daemaek: 'L3: Begin 2-min rotation',
+    l4_sojucheon: 'L4: Begin 2-min rotation', l5_complete: 'L5: Complete',
+    belly_massage: 'Belly Massage', l3_2min: 'L3: 2-min', l4_2min: 'L4: 2-min'
+  };
+
+  el.innerHTML = data.map(r => {
+    const label = outcomeLabels[r.outcome] || r.outcome || '—';
+    const date = r.checkup_sessions?.session_date ? fmtDate(r.checkup_sessions.session_date) : '—';
+    const isLevelUp = r.outcome === 'level_up';
+    const isEncourage = r.outcome === 'encouragement';
+    return `
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;padding:10px 0;border-bottom:1px solid var(--bg2)">
+        <div>
+          <span style="font-size:14px;font-weight:500;color:${isLevelUp?'var(--gold)':isEncourage?'var(--teal)':'var(--ink1)'}">${label}</span>
+          ${r.acu_point ? `<span style="font-size:12px;color:var(--ink3);margin-left:8px">Focus: ${r.acu_point}</span>` : ''}
+          ${r.progress_pct ? `<span style="font-size:12px;color:var(--ink3);margin-left:8px">${r.progress_pct}%</span>` : ''}
+        </div>
+        <div style="font-size:12px;color:var(--ink3);text-align:right">
+          ${date}<br>
+          <span style="font-size:11px">Level ${r.level_assessed}</span>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function toggleMpEdit() {
+  const view = document.getElementById('mp-profile-view');
+  const edit = document.getElementById('mp-profile-edit');
+  const isEditing = edit.style.display !== 'none';
+  view.style.display = isEditing ? 'block' : 'none';
+  edit.style.display = isEditing ? 'none' : 'block';
+}
+
+async function saveMpProfile() {
+  if (!currentMember) return;
+  const updates = {
+    first_name: document.getElementById('mp-edit-first').value.trim(),
+    last_name: document.getElementById('mp-edit-last').value.trim(),
+    preferred_name: document.getElementById('mp-edit-preferred').value.trim() || null,
+    phone: document.getElementById('mp-edit-phone').value.trim() || null,
+    address1: document.getElementById('mp-edit-addr1').value.trim() || null,
+    city: document.getElementById('mp-edit-city').value.trim() || null,
+    state: document.getElementById('mp-edit-state').value.trim() || null,
+    zip: document.getElementById('mp-edit-zip').value.trim() || null,
+    country: document.getElementById('mp-edit-country').value.trim() || null,
+  };
+  const { error } = await SB.from('members').update(updates).eq('id', currentMember.id);
+  if (error) { alert('Error saving: ' + error.message); return; }
+
+  // Update local state
+  currentMember = { ...currentMember, ...updates };
+
+  // Update display
+  document.getElementById('mp-name').textContent = `Welcome, ${updates.preferred_name || updates.first_name}`;
+  document.getElementById('mp-phone').textContent = updates.phone || '—';
+  const addrParts = [updates.address1, updates.city, updates.state, updates.zip].filter(Boolean);
+  document.getElementById('mp-address').textContent = addrParts.join(', ') || '—';
+
+  document.getElementById('mp-save-msg').style.display = 'block';
+  setTimeout(() => {
+    document.getElementById('mp-save-msg').style.display = 'none';
+    toggleMpEdit();
+  }, 2000);
+}
+
+function applyRoleNav(role) {
+  // Communications role: hide everything except Communications section
+  if (role === 'communications') {
+    const hidePages = ['dashboard','members','onboarding','session','levelups','trials','group-review','meetings','scripts','reports','levels-admin','email-templates','locations-admin','settings','staff-admin'];
+    hidePages.forEach(p => {
+      const el = document.querySelector(`[data-p="${p}"]`);
+      if (el) el.style.display = 'none';
+    });
+    // Also hide section headers except Communications
+    document.querySelectorAll('.ns').forEach(ns => {
+      if (!ns.textContent.includes('Communications')) ns.style.display = 'none';
+    });
+    nav('absent');
+  }
 }
 
 async function signOut() {
@@ -2577,6 +2752,21 @@ async function signOut() {
 window.addEventListener('load', async () => {
   const url = localStorage.getItem('sb_url');
   const key = localStorage.getItem('sb_key');
+
+  // Check if this is an invite/recovery link (has token in URL hash)
+  const hash = window.location.hash;
+  const isAuthRedirect = hash.includes('access_token') || hash.includes('type=invite') || hash.includes('type=recovery') || hash.includes('type=signup');
+
+  if (isAuthRedirect && !url) {
+    // Member clicked invite link but we have no saved credentials yet
+    // Show a minimal password-set screen
+    document.getElementById('setup').style.display = 'none';
+    document.getElementById('member-portal').style.display = 'none';
+    document.getElementById('app').style.display = 'none';
+    document.getElementById('invite-screen').style.display = 'flex';
+    return;
+  }
+
   if (url && key) {
     try {
       SB = supabase.createClient(url, key, {
@@ -2584,6 +2774,9 @@ window.addEventListener('load', async () => {
       });
       document.getElementById('cfg-url').value = url;
       document.getElementById('cfg-key').value = key;
+
+      // If this is an auth redirect (e.g. password reset for existing staff),
+      // supabase-js will pick up the session from the hash automatically
       const { data: { user }, error } = await SB.auth.getUser();
       if (user && !error) { await initApp(); return; }
     } catch(e) {
@@ -2605,15 +2798,9 @@ async function loadStaff() {
   const { data } = await SB.from('staff').select('*').eq('is_active',true).order('last_name');
   staffList = data || [];
 }
-async function loadPaymentMethods() {
-  const { data } = await SB.from('payment_methods').select('*').eq('is_active',true).order('sort_order');
-  paymentMethods = data || [];
-}
 async function loadOrgConfig() {
   const { data } = await SB.from('config').select('*').single();
   orgConfig = data || {};
-  document.getElementById('fees-global-banner').style.display =
-    orgConfig.fees_globally_free ? 'block' : 'none';
 
   // Load custom email templates into cache
   const { data: templates } = await SB.from('email_templates').select('*');
@@ -2655,7 +2842,6 @@ function populateStaffSelects() {
 }
 
 function populatePayMethodSelect() {
-  const opts = paymentMethods.map(m => `<option value="${m.id}">${m.name}</option>`).join('');
   const el = document.getElementById('pay-method');
   if (el) el.innerHTML = opts;
 }
@@ -2707,15 +2893,12 @@ function nav(page) {
       }
     },
     comms: loadCommsLog,
-    fees: loadFeeOverview,
     reports: () => {
       loadCheckupSessionList();
       const locSel = document.getElementById('rpt-location');
       if (locSel) locSel.innerHTML = '<option value="">All locations</option>' +
         locations.map(l => `<option value="${l.id}">${l.name}</option>`).join('');
     },
-    payments: loadPaymentPageData,
-    'fee-report': loadFeeReport,
     'levels-admin': loadLevelsAdmin,
     templates: loadTemplates,
     'locations-admin': loadLocationsAdmin,
@@ -2801,13 +2984,11 @@ async function updateBadges() {
       SB.from('v_levelup_invite_queue').select('member_id', {count:'exact',head:true}),
       SB.from('v_trials_expiring').select('id', {count:'exact',head:true}),
       SB.from('v_group_review_needed').select('id', {count:'exact',head:true}),
-      SB.from('members').select('id', {count:'exact',head:true}).eq('fee_overdue_flag',true)
     ]);
     setBadge('nb-ob', ob.count);
     setBadge('nb-lu', lu.count);
     setBadge('nb-tr', tr.count);
     setBadge('nb-gr', gr.count);
-    setBadge('nb-fee', fee.count);
   } catch(e) {}
 }
 
@@ -2827,7 +3008,6 @@ async function renderDashboard() {
     document.getElementById('ds-total').textContent = counts.total_members || 0;
     document.getElementById('ds-active').textContent = counts.active_members || 0;
     document.getElementById('ds-trial').textContent = counts.trial_members || 0;
-    document.getElementById('ds-fee').textContent = counts.fee_overdue || 0;
   }
   // Onboarding pending count
   const { count: obCount } = await SB.from('v_onboarding_pending').select('id',{count:'exact',head:true});
@@ -2930,7 +3110,6 @@ async function loadMembers() {
         ${m.encourage_emails?'<span class="fp fp-enc">Encourage</span>':''}
         ${m.flag_one_on_one?'<span class="fp fp-oo1">1:1</span>':''}
         ${m.email_pref!=='all'?'<span class="fp fp-ne">No email</span>':''}
-        ${m.fee_overdue_flag?'<span class="fp fp-due">Fee due</span>':''}
         ${m.level6_review_needed&&!m.level6_review_done?'<span class="fp fp-rev">Grp review</span>':''}
       </td>
       <td style="font-size:12px;color:var(--ink3)">${m.last_checkup_at?fmtDate(m.last_checkup_at):'—'}</td>
@@ -2958,9 +3137,6 @@ async function openMemberModal(id) {
   const { data: healthLog } = await SB.from('health_notes_log')
     .select('*, staff(first_name,last_name)').eq('member_id', id)
     .order('noted_at', {ascending:false}).limit(8);
-
-  const { data: billing } = await SB.from('billing_periods')
-    .select('*').eq('member_id', id).order('period_start', {ascending:false}).limit(6);
 
   document.getElementById('mm-title').textContent = `${m.first_name} ${m.last_name}`;
 
@@ -2999,7 +3175,6 @@ async function openMemberModal(id) {
       ${m.phone_call_during_class?`<span class="fp" style="background:#e8f8f0;color:#1a5a3a">📞 Call${m.phone_call_class_time?' — '+m.phone_call_class_time:''}</span>`:''}
       ${m.chair_modification?'<span class="fp">Chair modification</span>':''}
       ${m.doctor_clearance_on_file?'<span class="fp">Doctor clearance on file</span>':''}
-      ${m.fee_overdue_flag&&!orgConfig.fees_globally_free?'<span class="fp fp-due">Fee overdue</span>':''}
     </div>
 
     ${m.health_notes||m.modifications_noted ? `
@@ -3050,20 +3225,6 @@ async function openMemberModal(id) {
           </div>`).join('')}
       </div>` : ''}
 
-    ${billing&&billing.length ? `
-      <div class="sdiv">Billing History</div>
-      <div style="max-height:160px;overflow-y:auto">
-        ${billing.map(b => `
-          <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--bg2)">
-            <div style="flex:1;font-size:13px">
-              <strong>${b.period_label}</strong> — Due ${fmtDate(b.due_date)}
-            </div>
-            <div style="font-size:12px;color:var(--ink2)">
-              Suggested: $${b.suggested_amount} · Paid: $${b.amount_paid}
-            </div>
-            ${b.is_waived?'<span class="badge b-waived">Waived</span>':b.is_paid?'<span class="badge b-active">Paid</span>':b.is_overdue?'<span class="badge" style="background:var(--rbg);color:var(--rust)">Overdue</span>':'<span class="badge b-trial">Pending</span>'}
-          </div>`).join('')}
-      </div>` : ''}
   `;
 
   document.getElementById('mm-checkup-btn').onclick = () => {
@@ -3509,9 +3670,6 @@ async function enrollMember() {
     waiver_signed: true,
     waiver_signed_date: document.getElementById('ob-waiver-date').value || joinDate,
     waiver_signature_name: waiverSig,
-    fee_tier: feeTier,
-    fee_custom_amount: customAmt,
-    billing_frequency: feeFreq,
     email_pref: document.getElementById('ob-noemail').checked ? 'no_checkup_results' : 'all',
     encourage_emails: document.getElementById('ob-enc').checked,
     flag_one_on_one: document.getElementById('ob-oo1').checked,
@@ -5013,197 +5171,8 @@ async function viewCommLog(id) {
 // ══════════════════════════════════════════════════════════
 //  FEES
 // ══════════════════════════════════════════════════════════
-async function loadFeeOverview() {
-  if (!SB) return;
-  await loadOrgConfig();
-  const q = document.getElementById('fq')?.value?.toLowerCase()||'';
-  const loc = document.getElementById('f-loc')?.value||'';
-  const overdue = document.getElementById('f-overdue')?.value||'';
 
-  const { data } = await SB.from('v_fee_overview').select('*');
-  let rows = data||[];
-  if (q) rows = rows.filter(r => `${r.first_name} ${r.last_name} ${r.email}`.toLowerCase().includes(q));
-  if (loc) rows = rows.filter(r => r.location_name === locations.find(l=>l.id===loc)?.name);
-  if (overdue === 'overdue') rows = rows.filter(r => r.fee_overdue_flag && !r.effectively_free);
-  if (overdue === 'current') rows = rows.filter(r => !r.fee_overdue_flag || r.effectively_free);
 
-  const tbody = document.getElementById('fees-tbody');
-  tbody.innerHTML = rows.length ? rows.map(m => `
-    <tr onclick="openMemberModal('${m.member_id}')">
-      <td><div class="mn">${m.first_name} ${m.last_name}</div><div class="me">${m.email}</div></td>
-      <td style="font-size:12px">${m.location_name}</td>
-      <td>
-        ${m.effectively_free
-          ? '<span class="badge b-waived">Free</span>'
-          : `<span class="badge b-${m.fee_tier}">${m.fee_tier}</span>`}
-      </td>
-      <td style="font-size:12px">${m.billing_frequency?.replace('_',' ')||'—'}</td>
-      <td>${statusBadge(m.status)}</td>
-      <td style="color:${m.overdue_periods>0&&!m.effectively_free?'var(--rust)':'var(--ink3)'}">${m.effectively_free?'—':m.overdue_periods||0}</td>
-      <td style="color:${m.amount_overdue>0&&!m.effectively_free?'var(--rust)':'var(--ink)'}">
-        ${m.effectively_free?'Free':m.amount_overdue>0?`$${m.amount_overdue.toFixed(2)}`:'Current'}
-      </td>
-      <td style="font-size:12px;color:var(--ink3)">${m.last_payment_date?fmtDate(m.last_payment_date):'—'}</td>
-      <td style="font-size:12px">$${(m.paid_ytd||0).toFixed(2)}</td>
-      <td>
-        <button class="btn btn-sm" onclick="event.stopPropagation();nav('payments');document.getElementById('pay-member').value='${m.member_id}'">Pay</button>
-        ${m.overdue_periods>0&&!m.effectively_free?`<button class="btn btn-sm" onclick="event.stopPropagation();generatePayReminder('${m.member_id}','${m.email}','${m.first_name}')">Remind</button>`:''}
-      </td>
-    </tr>`).join('') : '<tr><td colspan="10" class="empty">No members found.</td></tr>';
-}
-
-async function generatePayReminder(memberId, email, firstName) {
-  const org = orgConfig.org_subtitle||'Seokmun Hoheup Practice';
-  const subject = `Membership fee reminder — ${org}`;
-  const body = `Dear ${firstName},
-
-This is a gentle reminder that your membership fee contribution for ${org} is currently outstanding.
-
-As a reminder, our practice operates on a sliding scale — you choose the amount that works for your situation:
-
-  Supporter: $${orgConfig.fee_supporter||'[amount]'}/month
-  Standard:  $${orgConfig.fee_standard||'[amount]'}/month
-  Reduced:   $${orgConfig.fee_reduced||'[amount]'}/month
-
-Payment can be made by:
-${paymentMethods.filter(m=>m.is_active).map(m=>`  ${m.name}: ${m.instructions||''}`).join('\n')}
-
-There is never any pressure — we are grateful for whatever you are able to contribute, and your participation in the practice is what matters most.
-
-If you have any questions, please don't hesitate to reach out.
-
-With warm regards,
-${org}`;
-  openEmailModal(memberId, email, subject, body, async () => {
-    await SB.from('communications').insert({
-      member_id: memberId, recipient_email: email,
-      comm_type: 'payment_reminder', subject, body,
-      sent_at: new Date().toISOString(), sent_by: currentStaff?.id
-    });
-    loadFeeOverview();
-  });
-}
-
-function showGlobalFreeModal() {
-  const newState = !orgConfig.fees_globally_free;
-  if (!confirm(newState
-    ? 'Set ALL fees globally free? All members will be treated as waived. You can reverse this in Settings.'
-    : 'Turn off global free mode? Individual member fee tiers will apply again.')) return;
-  SB.from('config').update({ fees_globally_free: newState }).eq('id',1).then(() => {
-    loadOrgConfig(); loadFeeOverview();
-  });
-}
-
-async function loadPaymentPageData() {
-  if (!SB) return;
-  const { data: members } = await SB.from('members')
-    .select('id,first_name,last_name,email').in('status',['active','trial','hold']).order('last_name');
-  const sel = document.getElementById('pay-member');
-  if (sel) sel.innerHTML = '<option value="">Select member…</option>' +
-    (members||[]).map(m => `<option value="${m.id}">${m.first_name} ${m.last_name}</option>`).join('');
-  const sel2 = document.getElementById('bp-member');
-  if (sel2) sel2.innerHTML = '<option value="">Select member…</option>' +
-    (members||[]).map(m => `<option value="${m.id}">${m.first_name} ${m.last_name}</option>`).join('');
-
-  populatePayMethodSelect();
-  document.getElementById('pay-date').value = todayLocal();
-  document.getElementById('bp-start').value = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0];
-  document.getElementById('bp-end').value = new Date(new Date().getFullYear(), new Date().getMonth()+1, 0).toISOString().split('T')[0];
-  document.getElementById('bp-due').value = new Date(new Date().getFullYear(), new Date().getMonth()+1, 1).toISOString().split('T')[0];
-}
-
-async function loadMemberBillingPeriods() {
-  const memberId = document.getElementById('pay-member').value;
-  const sel = document.getElementById('pay-period');
-  if (!memberId) { sel.innerHTML = '<option value="">Not linked to a period</option>'; return; }
-  const { data } = await SB.from('billing_periods')
-    .select('*').eq('member_id', memberId).eq('is_paid', false).order('due_date');
-  sel.innerHTML = '<option value="">Not linked to a period</option>' +
-    (data||[]).map(p => `<option value="${p.id}">${p.period_label} — $${(p.suggested_amount-p.amount_paid).toFixed(2)} outstanding</option>`).join('');
-  sel.addEventListener('change', () => {
-    const pid = sel.value;
-    const el = document.getElementById('pay-period-info');
-    if (pid) {
-      const period = (data||[]).find(p=>p.id===pid);
-      if (period) {
-        el.style.display='block';
-        el.innerHTML=`<strong>${period.period_label}</strong> — Suggested: $${period.suggested_amount}${period.member_chose_amount?', Member chose: $'+period.member_chose_amount:''} — Paid so far: $${period.amount_paid}`;
-        document.getElementById('pay-amount').value = Math.max(0, (period.member_chose_amount||period.suggested_amount) - period.amount_paid).toFixed(2);
-      }
-    } else { el.style.display='none'; }
-  });
-}
-
-async function recordPayment() {
-  const memberId = document.getElementById('pay-member').value;
-  const methodId = document.getElementById('pay-method').value;
-  const amount = parseFloat(document.getElementById('pay-amount').value);
-  const date = document.getElementById('pay-date').value;
-  if (!memberId||!methodId||!amount||!date) { alert('Please fill in all required fields.'); return; }
-
-  const { error } = await SB.from('payments').insert({
-    member_id: memberId,
-    billing_period_id: document.getElementById('pay-period').value || null,
-    payment_method_id: methodId,
-    amount, payment_date: date,
-    reference: document.getElementById('pay-ref').value.trim()||null,
-    notes: document.getElementById('pay-notes').value.trim()||null,
-    received_by: currentStaff?.id
-  });
-
-  const result = document.getElementById('pay-result');
-  if (error) {
-    result.innerHTML = `<div class="alert a-d">Error: ${error.message}</div>`;
-  } else {
-    result.innerHTML = `<div class="alert a-s">✓ Payment of $${amount.toFixed(2)} recorded successfully.</div>`;
-    document.getElementById('pay-amount').value = '';
-    document.getElementById('pay-ref').value = '';
-    document.getElementById('pay-notes').value = '';
-    updateBadges();
-  }
-}
-
-async function createBillingPeriod() {
-  const memberId = document.getElementById('bp-member').value;
-  if (!memberId) { alert('Please select a member.'); return; }
-  const suggested = parseFloat(document.getElementById('bp-amount').value||0);
-  const chose = document.getElementById('bp-chose').value ? parseFloat(document.getElementById('bp-chose').value) : null;
-  const { error } = await SB.from('billing_periods').insert({
-    member_id: memberId,
-    period_label: document.getElementById('bp-label').value.trim() || 'Period',
-    period_start: document.getElementById('bp-start').value,
-    period_end: document.getElementById('bp-end').value,
-    due_date: document.getElementById('bp-due').value,
-    suggested_tier: document.getElementById('bp-tier').value,
-    suggested_amount: suggested,
-    member_chose_amount: chose,
-    created_by: currentStaff?.id
-  });
-  const result = document.getElementById('bp-result');
-  if (error) result.innerHTML = `<div class="alert a-d">Error: ${error.message}</div>`;
-  else { result.innerHTML = `<div class="alert a-s">✓ Billing period created.</div>`; loadMemberBillingPeriods(); }
-}
-
-async function loadFeeReport() {
-  if (!SB) return;
-  const { data } = await SB.from('v_fee_report_monthly').select('*');
-  const tbody = document.getElementById('report-tbody');
-  tbody.innerHTML = data&&data.length ? data.map(r => `
-    <tr>
-      <td><strong>${fmtMonth(r.month)}</strong></td>
-      <td>${r.total_periods}</td>
-      <td style="color:var(--sage)">${r.paid}</td>
-      <td style="color:var(--ink3)">${r.waived}</td>
-      <td style="color:${r.overdue>0?'var(--rust)':'var(--ink3)'}">${r.overdue}</td>
-      <td>$${Number(r.total_suggested).toFixed(2)}</td>
-      <td style="color:var(--sage)">$${Number(r.total_collected).toFixed(2)}</td>
-      <td style="color:${Number(r.outstanding)>0?'var(--rust)':'var(--ink3)'}">$${Number(r.outstanding).toFixed(2)}</td>
-    </tr>`).join('') : '<tr><td colspan="8" class="empty">No billing data yet.</td></tr>';
-}
-
-// ══════════════════════════════════════════════════════════
-//  ADMIN — LEVELS
-// ══════════════════════════════════════════════════════════
 async function loadLevelsAdmin() {
   if (!SB) return;
   const { data } = await SB.from('practice_levels').select('*').order('level_number');
@@ -5851,16 +5820,12 @@ async function loadSettings() {
     'cfg-appurl': c.app_install_url||'', 'cfg-zoom': c.zoom_url||'',
     'cfg-regurl-singleday': c.reg_url_singleday||'', 'cfg-regurl-membership': c.reg_url_membership||'',
     'cfg-checkto': c.check_payable_to||'',
-    'cfg-supporter': c.fee_supporter, 'cfg-standard': c.fee_standard,
-    'cfg-reduced': c.fee_reduced,
     'cfg-reminder': c.reminder_days_overdue||''
   };
   Object.entries(fields).forEach(([id,val]) => {
     const el = document.getElementById(id);
     if (el) el.value = val;
   });
-  document.getElementById('cfg-global-free').checked = c.fees_globally_free||false;
-  loadPaymentMethodAdmin();
 }
 
 async function saveConfig() {
@@ -5879,59 +5844,7 @@ async function saveConfig() {
   alert('✓ Organization settings saved.');
 }
 
-async function saveFeeConfig() {
-  await SB.from('config').update({
-    fee_supporter: parseFloat(document.getElementById('cfg-supporter').value)||0,
-    fee_standard: parseFloat(document.getElementById('cfg-standard').value)||0,
-    fee_reduced: parseFloat(document.getElementById('cfg-reduced').value)||0,
-    fees_globally_free: document.getElementById('cfg-global-free').checked,
-    reminder_days_overdue: parseInt(document.getElementById('cfg-reminder').value)||null
-  }).eq('id',1);
-  await loadOrgConfig();
-  alert('✓ Fee settings saved.');
-}
 
-function toggleGlobalFree(val) {
-  if (val) {
-    document.getElementById('fees-global-banner').style.display = 'block';
-  } else {
-    document.getElementById('fees-global-banner').style.display = 'none';
-  }
-}
-
-async function loadPaymentMethodAdmin() {
-  const { data } = await SB.from('payment_methods').select('*').order('sort_order');
-  const el = document.getElementById('pm-list');
-  el.innerHTML = `<div style="padding:10px 18px">` + (data||[]).map(m => `
-    <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--bg2)">
-      <div style="flex:1">
-        <div style="font-weight:500;font-size:13px">${m.name}</div>
-        <div style="font-size:12px;color:var(--ink3)">${m.instructions||''}</div>
-      </div>
-      <span class="badge ${m.is_active?'b-active':'b-inactive'}">${m.is_active?'Active':'Off'}</span>
-      <button class="btn btn-sm" onclick="editPayMethod('${m.id}','${escAttr(m.instructions||'')}')">Edit</button>
-    </div>`).join('') + '</div>';
-}
-
-async function editPayMethod(id, instructions) {
-  const newInstr = prompt('Payment instructions:', instructions);
-  if (newInstr === null) return;
-  await SB.from('payment_methods').update({ instructions: newInstr }).eq('id', id);
-  loadPaymentMethodAdmin();
-}
-
-function addPaymentMethod() {
-  const name = prompt('Payment method name (e.g. Stripe, Square):');
-  if (!name) return;
-  const instr = prompt('Instructions for member:') || '';
-  SB.from('payment_methods').insert({ name, instructions: instr, sort_order: 99 }).then(() => {
-    loadPaymentMethods(); loadPaymentMethodAdmin(); populatePayMethodSelect();
-  });
-}
-
-// ══════════════════════════════════════════════════════════
-//  ADMIN — STAFF
-// ══════════════════════════════════════════════════════════
 async function loadStaffAdmin() {
   if (!SB) return;
   const { data } = await SB.from('staff').select('*, locations(name)').order('last_name');
