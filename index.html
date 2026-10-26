@@ -249,6 +249,21 @@ textarea{resize:vertical;min-height:68px}
   </div>
 </div>
 
+<!-- ══════════ MEMBER LOGIN ══════════ -->
+<div id="member-login" style="display:none;position:fixed;inset:0;background:var(--bg1);align-items:center;justify-content:center;z-index:9998">
+  <div class="setup-box" style="max-width:400px">
+    <div class="setup-logo">Seokmun Hoheup Practice</div>
+    <div style="font-size:13px;color:var(--ink3);margin-bottom:20px;text-align:center">Member Portal — Sign In</div>
+    <div class="fg"><label>Email</label><input id="ml-email" type="email" placeholder="you@example.com"></div>
+    <div class="fg"><label>Password</label><input id="ml-pass" type="password" placeholder="••••••••"></div>
+    <div id="ml-err" class="alert a-d" style="display:none"></div>
+    <button class="btn btn-p" style="width:100%;margin-top:4px" onclick="memberSignIn()">Sign In</button>
+    <div style="margin-top:16px;text-align:center">
+      <a href="#" onclick="document.getElementById('member-login').style.display='none';document.getElementById('setup').style.display='flex';return false;" style="font-size:12px;color:var(--ink3)">Staff login →</a>
+    </div>
+  </div>
+</div>
+
 <!-- ══════════ SETUP / SIGN-IN ══════════ -->
 <div id="setup">
   <div class="setup-box">
@@ -2472,6 +2487,33 @@ async function doSetup() {
   }
 }
 
+async function memberSignIn() {
+  const email = document.getElementById('ml-email').value.trim();
+  const pass = document.getElementById('ml-pass').value;
+  const errEl = document.getElementById('ml-err');
+  errEl.style.display = 'none';
+
+  if (!email || !pass) {
+    errEl.textContent = 'Please enter your email and password.';
+    errEl.style.display = 'block'; return;
+  }
+
+  try {
+    const url = localStorage.getItem('sb_url') || 'https://delnpwuubnrmixapyngm.supabase.co';
+    const key = localStorage.getItem('sb_key') || 'sb_publishable_MKj1BIdBoj7X55RmuEKRmQ_-x-OJ24u';
+    SB = supabase.createClient(url, key, {
+      auth: { persistSession: true, autoRefreshToken: true }
+    });
+    const { data, error } = await SB.auth.signInWithPassword({ email, password: pass });
+    if (error) throw error;
+    document.getElementById('member-login').style.display = 'none';
+    await initApp();
+  } catch(e) {
+    errEl.textContent = e.message || 'Sign in failed. Check your email and password.';
+    errEl.style.display = 'block';
+  }
+}
+
 async function acceptInvite() {
   const pw = document.getElementById('invite-password').value;
   const pw2 = document.getElementById('invite-password2').value;
@@ -2783,8 +2825,14 @@ window.addEventListener('load', async () => {
       console.warn('Auto-reconnect failed:', e.message);
     }
   }
-  // Show setup screen if not connected
-  document.getElementById('setup').style.display = 'flex';
+  // Always show member login by default
+  // Staff click "Staff login →" to get the full setup screen
+  if (url && key) {
+    // Pre-fill staff setup fields in case they switch to staff login
+    document.getElementById('cfg-url').value = url;
+    document.getElementById('cfg-key').value = key;
+  }
+  document.getElementById('member-login').style.display = 'flex';
 });
 
 // ══════════════════════════════════════════════════════════
