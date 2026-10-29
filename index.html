@@ -258,9 +258,31 @@ textarea{resize:vertical;min-height:68px}
     <div class="fg"><label>Password</label><input id="ml-pass" type="password" placeholder="••••••••"></div>
     <div id="ml-err" class="alert a-d" style="display:none"></div>
     <button class="btn btn-p" style="width:100%;margin-top:4px" onclick="memberSignIn()">Sign In</button>
+    <div style="margin-top:12px;text-align:center">
+      <a href="#" onclick="showForgotPassword();return false;" style="font-size:12px;color:var(--ink3)">Forgot password?</a>
+    </div>
+    <div id="forgot-section" style="display:none;margin-top:16px;padding-top:16px;border-top:1px solid var(--bg3)">
+      <div style="font-size:13px;color:var(--ink2);margin-bottom:10px">Enter your email and we'll send a reset link.</div>
+      <div class="fg"><label>Email</label><input id="forgot-email" type="email" placeholder="you@example.com"></div>
+      <div id="forgot-msg" style="display:none;font-size:13px;margin-bottom:8px"></div>
+      <button class="btn btn-sm" style="width:100%" onclick="sendPasswordReset()">Send Reset Link</button>
+    </div>
     <div style="margin-top:16px;text-align:center">
       <a href="#" onclick="document.getElementById('member-login').style.display='none';document.getElementById('setup').style.display='flex';return false;" style="font-size:12px;color:var(--ink3)">Staff login →</a>
     </div>
+  </div>
+</div>
+
+<!-- ══════════ FORCE PASSWORD CHANGE ══════════ -->
+<div id="change-password-screen" style="display:none;position:fixed;inset:0;background:var(--bg1);align-items:center;justify-content:center;z-index:10000">
+  <div class="setup-box" style="max-width:400px">
+    <div class="setup-logo">Seokmun Hoheup Practice</div>
+    <div id="change-pw-reason" style="font-size:13px;color:var(--ink2);margin-bottom:20px;text-align:center">Please set a new password to continue.</div>
+    <div class="fg"><label>New Password</label><input type="password" id="chpw-new" placeholder="At least 8 characters"></div>
+    <div class="fg"><label>Confirm Password</label><input type="password" id="chpw-confirm" placeholder="Confirm new password"></div>
+    <div id="chpw-err" style="color:var(--red);font-size:13px;margin-bottom:10px;display:none"></div>
+    <div id="chpw-ok" style="color:var(--teal);font-size:13px;margin-bottom:10px;display:none">✓ Password updated! Taking you in...</div>
+    <button class="btn btn-p" style="width:100%" onclick="saveNewPassword()">Set New Password</button>
   </div>
 </div>
 
@@ -2486,6 +2508,49 @@ async function doSetup() {
   }
 }
 
+function showForgotPassword() {
+  const s = document.getElementById('forgot-section');
+  s.style.display = s.style.display === 'none' ? 'block' : 'none';
+  if (s.style.display === 'block') {
+    // Pre-fill email if already typed
+    const email = document.getElementById('ml-email').value;
+    if (email) document.getElementById('forgot-email').value = email;
+  }
+}
+
+async function sendPasswordReset() {
+  const email = document.getElementById('forgot-email').value.trim();
+  const msgEl = document.getElementById('forgot-msg');
+  msgEl.style.display = 'none';
+
+  if (!email) {
+    msgEl.textContent = 'Please enter your email address.';
+    msgEl.style.color = 'var(--red)';
+    msgEl.style.display = 'block'; return;
+  }
+
+  try {
+    const url = localStorage.getItem('sb_url') || 'https://delnpwuubnrmixapyngm.supabase.co';
+    const key = localStorage.getItem('sb_key') || 'sb_publishable_MKj1BIdBoj7X55RmuEKRmQ_-x-OJ24u';
+    if (!SB) {
+      SB = supabase.createClient(url, key, {
+        auth: { persistSession: true, autoRefreshToken: true }
+      });
+    }
+    const { error } = await SB.auth.resetPasswordForEmail(email, {
+      redirectTo: 'https://seokmunlb.github.io/seokmun-app'
+    });
+    if (error) throw error;
+    msgEl.textContent = '✓ Reset link sent! Check your email.';
+    msgEl.style.color = 'var(--teal)';
+    msgEl.style.display = 'block';
+  } catch(e) {
+    msgEl.textContent = e.message || 'Error sending reset email.';
+    msgEl.style.color = 'var(--red)';
+    msgEl.style.display = 'block';
+  }
+}
+
 async function memberSignIn() {
   const email = document.getElementById('ml-email').value.trim();
   const pass = document.getElementById('ml-pass').value;
@@ -2613,9 +2678,77 @@ async function initApp() {
 //  MEMBER PORTAL
 // ══════════════════════════════════════════════════════════
 
+async function checkPasswordExpiry(member) {
+  const EXPIRY_DAYS = 180;
+  const now = new Date();
+
+  // First login — never changed password
+  if (!member.password_changed_at) {
+    document.getElementById('change-pw-reason').textContent =
+      'Welcome! Please set a personal password to continue.';
+    document.getElementById('change-password-screen').style.display = 'flex';
+    return true; // blocked
+  }
+
+  // Check if password is older than EXPIRY_DAYS
+  const changed = new Date(member.password_changed_at);
+  const daysSince = (now - changed) / (1000 * 60 * 60 * 24);
+  if (daysSince > EXPIRY_DAYS) {
+    document.getElementById('change-pw-reason').textContent =
+      `Your password is over ${EXPIRY_DAYS} days old. Please set a new one to continue.`;
+    document.getElementById('change-password-screen').style.display = 'flex';
+    return true; // blocked
+  }
+
+  return false; // ok to proceed
+}
+
+async function saveNewPassword() {
+  const pw = document.getElementById('chpw-new').value;
+  const pw2 = document.getElementById('chpw-confirm').value;
+  const errEl = document.getElementById('chpw-err');
+  errEl.style.display = 'none';
+
+  if (!pw || pw.length < 8) {
+    errEl.textContent = 'Password must be at least 8 characters.';
+    errEl.style.display = 'block'; return;
+  }
+  if (pw !== pw2) {
+    errEl.textContent = 'Passwords do not match.';
+    errEl.style.display = 'block'; return;
+  }
+
+  try {
+    const { error } = await SB.auth.updateUser({ password: pw });
+    if (error) throw error;
+
+    // Record the change time
+    await SB.from('members').update({
+      password_changed_at: new Date().toISOString()
+    }).eq('id', currentMember.id);
+
+    currentMember.password_changed_at = new Date().toISOString();
+
+    document.getElementById('chpw-ok').style.display = 'block';
+    setTimeout(() => {
+      document.getElementById('change-password-screen').style.display = 'none';
+      document.getElementById('member-portal').style.display = 'block';
+    }, 1500);
+  } catch(e) {
+    errEl.textContent = e.message || 'Error updating password.';
+    errEl.style.display = 'block';
+  }
+}
+
 async function initMemberPortal(member, user) {
   document.getElementById('setup').style.display = 'none';
   document.getElementById('app').style.display = 'none';
+
+  // Check if password change is required before showing portal
+  currentMember = member;
+  const blocked = await checkPasswordExpiry(member);
+  if (blocked) return;
+
   document.getElementById('member-portal').style.display = 'block';
 
   // Set name
@@ -2796,15 +2929,22 @@ window.addEventListener('load', async () => {
 
   // Check if this is an invite/recovery link (has token in URL hash)
   const hash = window.location.hash;
-  const isAuthRedirect = hash.includes('access_token') || hash.includes('type=invite') || hash.includes('type=recovery') || hash.includes('type=signup');
+  const isRecovery = hash.includes('type=recovery');
+  const isInvite = hash.includes('type=invite') || hash.includes('type=signup');
+  const isAuthRedirect = hash.includes('access_token') || isInvite || isRecovery;
 
-  if (isAuthRedirect && !url) {
-    // Member clicked invite link but we have no saved credentials yet
-    // Show a minimal password-set screen
-    document.getElementById('setup').style.display = 'none';
-    document.getElementById('member-portal').style.display = 'none';
-    document.getElementById('app').style.display = 'none';
+  if (isAuthRedirect) {
+    // Initialize SB so we can call updateUser
+    const u = url || 'https://delnpwuubnrmixapyngm.supabase.co';
+    const k = key || 'sb_publishable_MKj1BIdBoj7X55RmuEKRmQ_-x-OJ24u';
+    SB = supabase.createClient(u, k, { auth: { persistSession: true, autoRefreshToken: true } });
     document.getElementById('invite-screen').style.display = 'flex';
+    // Update label based on type
+    if (isRecovery) {
+      document.querySelector('#invite-screen .setup-logo').textContent = 'Reset Your Password';
+      document.querySelector('#invite-screen div[style*="Welcome"]') &&
+        (document.querySelector('#invite-screen div[style*="14px"]').textContent = 'Enter your new password below.');
+    }
     return;
   }
 
